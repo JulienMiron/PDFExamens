@@ -307,6 +307,11 @@
             tableX: 88,  // Distance depuis le bord droit
             tableY: 38,  // Distance depuis le bas
             tableSize: 16
+            ,
+            // Position du local (coin bas gauche sur la page de couverture)
+            localX: 40,
+            localY: 38,
+            localSize: 12
         };
         // ==================================================
 
@@ -413,6 +418,17 @@
                         font,
                         color: rgb(0, 0, 0),
                         });
+                        // --- LOCAL (bas gauche sur la page de couverture) ---
+                        const localText = student.local || '';
+                        if (localText) {
+                            firstPage.drawText(localText, {
+                                x: CONFIG.localX,
+                                y: CONFIG.localY,
+                                size: CONFIG.localSize,
+                                font,
+                                color: rgb(0, 0, 0),
+                            });
+                        }
                     // Numéro de table au bas de chaque page (coin inférieur droit, DANS le rectangle)
                     for (let pageIndex = 0; pageIndex < pages.length; pageIndex++) {
                         const page = pages[pageIndex];
