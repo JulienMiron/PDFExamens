@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Générateur de PDFs d'Examen</title>
+    <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+            text-align: center;
+        }
+
+        .subtitle {
+            color: #666;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .upload-section {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            color: #555;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        input[type="file"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px dashed #667eea;
+            border-radius: 10px;
+            background: #f8f9ff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        input[type="file"]:hover {
+            border-color: #764ba2;
+            background: #f0f1ff;
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .progress {
+            margin-top: 20px;
+            display: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #f0f0f0;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        .progress-text {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .info-box {
+            background: #e8f4ff;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .info-box p {
+            color: #555;
+            font-size: 13px;
+            line-height: 1.6;
+            margin-bottom: 5px;
+        }
+
+        .info-box p:last-child {
+            margin-bottom: 0;
+        }
+
+        .success {
+            background: #d4edda;
+            border-left-color: #28a745;
+        }
+
+        .error {
+            background: #f8d7da;
+            border-left-color: #dc3545;
+        }
+
+        select, input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            background: #f8f9ff;
+            font-size: 14px;
+            color: #333;
+            transition: all 0.3s ease;
+            appearance: auto;
+        }
+
+        select:hover, input[type="text"]:hover {
+            border-color: #764ba2;
+            background: #f0f1ff;
+        }
+
+        select:focus, input[type="text"]:focus {
+            outline: none;
+            border-color: #764ba2;
+            box-shadow: 0 0 0 3px rgba(118, 75, 162, 0.2);
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📄 Générateur d'examens avec nom, matricule et numéro de table</h1>
+        <p class="subtitle">Possibilité de générer des listes de présence</p>
+
+        <div class="info-box">
+            <p><strong>Format CSV ou XLSX attendu :</strong></p>
+            <p>• Colonne 1 : Prénom et nom</p>
+            <p>• Colonne 2 : Numéro d'identification (NI)</p>
+            <p>• Colonne 3 : Numéro de table</p>
+            <p>• Colonne 4 : Local</p>
+            <p>• Colonne 5 : Section</p>
+        </div>
+
+        <div class="upload-section">
+            <label for="csvFile">📊 Fichier CSV ou XLSX des étudiants</label>
+            <input type="file" id="csvFile" accept=".csv,.xlsx" required>
+        </div>
+
+        <div class="upload-section">
+            <label for="pdfFile">📑 Modèle PDF de l'examen</label>
+            <input type="file" id="pdfFile" accept=".pdf" required>
+        </div>
+
+        <div class="upload-section">
+            <label for="listOption">📋 Liste de présence</label>
+            <select id="listOption" onchange="toggleListFields()">
+                <option value="none">Aucune liste</option>
+                <option value="local">Liste des étudiants par locaux</option>
+                <option value="section">Liste des étudiants par section</option>
+            </select>
+        </div>
+
+        <div id="listFields" class="hidden">
+            <div class="upload-section">
+                <label for="evalName">📝 Nom de l'évaluation</label>
+                <input type="text" id="evalName" placeholder="Ex: Examen 1">
+            </div>
+            <div class="upload-section">
+                <label for="courseName">📚 Numéro du cours</label>
+                <input type="text" id="courseName" placeholder="Ex: STT-1500">
+            </div>
+        </div>
+
+        <button id="generateBtn" onclick="generatePDFs()">
+            🚀 Générer et Télécharger le ZIP
+        </button>
+
+        <div class="progress" id="progress">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-text" id="progressText">Initialisation...</div>
+        </div>
+    </div>
+
+    <script>
+        const { PDFDocument, rgb, StandardFonts } = PDFLib;
+
+        // ========== CONFIGURATION DES POSITIONS ==========
+        // Ajustez ces valeurs si les éléments ne sont pas parfaitement positionnés
+        const CONFIG = {
+            // Position du nom (en haut à droite)
+            nomX: 445,
+            nomY: 88,  // Distance depuis le haut de la page
+            nomSize: 12,
+            
+            // Position du NI (sous le nom)
+            niX: 450,
+            niY: 147,  // Distance depuis le haut de la page
+            niSize: 16,
+            
+            // Position du numéro de table (coin bas droit)
+            tableX: 88,  // Distance depuis le bord droit
+            tableY: 38,  // Distance depuis le bas
+            tableSize: 16
+        };
+        // ==================================================
+
+        async function generatePDFs() {
+            const csvFile = document.getElementById('csvFile').files[0];
+            const pdfFile = document.getElementById('pdfFile').files[0];
+            
+            if (!csvFile || !pdfFile) {
+                alert('⚠️ Veuillez sélectionner les deux fichiers (CSV/XLSX et PDF)');
+                return;
+            }
+
+            const listOption = document.getElementById('listOption').value;
+            const evalName = document.getElementById('evalName').value.trim();
+            const courseName = document.getElementById('courseName').value.trim();
+
+            if (listOption !== 'none' && (!evalName || !courseName)) {
+                alert('⚠️ Veuillez saisir le nom de l\'évaluation et le numéro du cours pour générer les listes de présence.');
+                return;
+            }
+
+            const progressDiv = document.getElementById('progress');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            const generateBtn = document.getElementById('generateBtn');
+
+            try {
+                // Désactiver le bouton et afficher la progression
+                generateBtn.disabled = true;
+                progressDiv.style.display = 'block';
+                progressFill.style.width = '10%';
+                progressText.textContent = 'Lecture des fichiers...';
+
+                // Lire le CSV ou XLSX
+                let csvText;
+                if (csvFile.name.toLowerCase().endsWith('.xlsx')) {
+                    const arrayBuffer = await csvFile.arrayBuffer();
+                    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    csvText = XLSX.utils.sheet_to_csv(firstSheet, { FS: ';' });
+                } else {
+                    csvText = await csvFile.text();
+                }
+                const students = parseCSV(csvText);
+                
+                if (students.length === 0) {
+                    throw new Error('Aucun étudiant trouvé dans le CSV. Vérifiez le format du fichier.');
+                }
+                
+                console.log(`${students.length} étudiants trouvés:`, students);
+                
+                progressFill.style.width = '20%';
+                progressText.textContent = `${students.length} étudiants trouvés...`;
+
+                // Lire le PDF template
+                const pdfBytes = await pdfFile.arrayBuffer();
+                
+                progressFill.style.width = '30%';
+                progressText.textContent = 'Chargement du modèle PDF...';
+
+                // Créer un ZIP
+                const zip = new JSZip();
+
+                // Générer un PDF pour chaque étudiant
+                for (let i = 0; i < students.length; i++) {
+                    const student = students[i];
+                    const progress = 30 + (i / students.length) * 60;
+                    progressFill.style.width = `${progress}%`;
+                    progressText.textContent = `Génération du PDF pour ${student.name}... (${i + 1}/${students.length})`;
+
+                    console.log(`Traitement de l'étudiant ${i + 1}:`, student);
+
+                    // Charger une nouvelle copie du PDF pour chaque étudiant
+                    const pdfDoc = await PDFDocument.load(pdfBytes);
+                    const pages = pdfDoc.getPages();
+                    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+
+                    console.log(`PDF chargé, ${pages.length} pages trouvées`);
+
+                    // Remplir les informations sur la première page
+                    const firstPage = pages[0];
+                    const { width, height } = firstPage.getSize();
+
+                        // --- NOM (centré autour de CONFIG.nomX) ---
+                        const nameText = student.name.toUpperCase();
+                        const nameWidth = font.widthOfTextAtSize(nameText, CONFIG.nomSize);
+
+                        firstPage.drawText(nameText, {
+                        x: CONFIG.nomX - nameWidth / 2,
+                        y: height - CONFIG.nomY,
+                        size: CONFIG.nomSize,
+                        font,
+                        color: rgb(0, 0, 0),
+                        });
+
+                        // --- NI (centré autour de CONFIG.niX) ---
+                        const niText = student.ni;
+                        const niWidth = font.widthOfTextAtSize(niText, CONFIG.niSize);
+
+                        firstPage.drawText(niText, {
+                        x: CONFIG.niX - niWidth / 2,
+                        y: height - CONFIG.niY,
+                        size: CONFIG.niSize,
+                        font,
+                        color: rgb(0, 0, 0),
+                        });
+                    // Numéro de table au bas de chaque page (coin inférieur droit, DANS le rectangle)
+                    for (let pageIndex = 0; pageIndex < pages.length; pageIndex++) {
+                        const page = pages[pageIndex];
+                        const { width: pageWidth } = page.getSize();
+                        
+                    for (let pageIndex = 0; pageIndex < pages.length; pageIndex++) {
+                    const page = pages[pageIndex];
+                    const { width: pageWidth } = page.getSize();
+
+                    const tableText = student.table;
+                    const tableWidth = font.widthOfTextAtSize(tableText, CONFIG.tableSize);
+
+                    // Ton config actuel place le champ à "pageWidth - tableX"
+                    // On interprète donc (pageWidth - tableX) comme le CENTRE du champ
+                    const tableCenterX = pageWidth - CONFIG.tableX;
+
+                    page.drawText(tableText, {
+                        x: tableCenterX - tableWidth / 2,
+                        y: CONFIG.tableY,
+                        size: CONFIG.tableSize,
+                        font,
+                        color: rgb(0, 0, 0),
+                    });
+                    }
+                    }
+
+                    // Sauvegarder le PDF
+                    const modifiedPdfBytes = await pdfDoc.save();
+                    console.log(`PDF sauvegardé, taille: ${modifiedPdfBytes.length} bytes`);
+                    
+                    // Ajouter au ZIP avec un nom de fichier nettoyé
+                    const fileName = sanitizeFileName(student.name);
+                    const fullFileName = `${fileName}_${student.ni}.pdf`;
+                    zip.file(fullFileName, modifiedPdfBytes);
+                    console.log(`Ajouté au ZIP: ${fullFileName}`);
+                }
+
+                // Générer les listes de présence si demandé
+                if (listOption !== 'none') {
+                    progressFill.style.width = '92%';
+                    progressText.textContent = 'Génération des listes de présence...';
+
+                    const groupBy = listOption; // 'local' ou 'section'
+                    const groups = {};
+                    for (const student of students) {
+                        const key = student[groupBy];
+                        if (!groups[key]) groups[key] = [];
+                        groups[key].push(student);
+                    }
+
+                    const groupKeys = Object.keys(groups).sort();
+                    for (const groupValue of groupKeys) {
+                        const attendancePdfBytes = await generateAttendancePDF(
+                            groups[groupValue], groupBy, groupValue, evalName, courseName
+                        );
+                        const label = groupBy === 'local' ? 'Local' : 'Section';
+                        const fileName = `listes_presence/Presence_${label}_${sanitizeFileName(groupValue)}.pdf`;
+                        zip.file(fileName, attendancePdfBytes);
+                    }
+                }
+
+                progressFill.style.width = '95%';
+                progressText.textContent = 'Création du fichier ZIP...';
+
+                // Générer le ZIP
+                const zipBlob = await zip.generateAsync({ type: 'blob' });
+
+                progressFill.style.width = '100%';
+                progressText.textContent = '✅ Téléchargement du ZIP...';
+
+                // Télécharger le ZIP
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(zipBlob);
+                link.download = 'examens_personnalises.zip';
+                link.click();
+
+                // Message de succès
+                setTimeout(() => {
+                    progressDiv.style.display = 'none';
+                    progressFill.style.width = '0%';
+                    alert(`✅ Succès ! ${students.length} PDFs ont été générés et téléchargés dans le ZIP.`);
+                    generateBtn.disabled = false;
+                }, 1000);
+
+            } catch (error) {
+                console.error('Erreur:', error);
+                progressDiv.style.display = 'none';
+                progressFill.style.width = '0%';
+                generateBtn.disabled = false;
+                alert('❌ Erreur lors de la génération des PDFs: ' + error.message);
+            }
+        }
+
+        function parseCSV(csvText) {
+            // Enlever le BOM UTF-8 si présent
+            csvText = csvText.replace(/^\uFEFF/, '');
+            
+            const lines = csvText.trim().split('\n');
+            const students = [];
+
+            // Ignorer la première ligne (en-têtes)
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (line) {
+                    // Détecter le séparateur (virgule ou point-virgule)
+                    const separator = line.includes(';') ? ';' : ',';
+                    const parts = line.split(separator);
+                    
+                    if (parts.length >= 5) {
+                        students.push({
+                            name: parts[0].trim(),
+                            ni: parts[1].trim(),
+                            table: parts[2].trim(),
+                            local: parts[3].trim(),
+                            section: parts[4].trim()
+                        });
+                    }
+                }
+            }
+
+            console.log('Étudiants parsés:', students);
+            return students;
+        }
+
+        function toggleListFields() {
+            const option = document.getElementById('listOption').value;
+            const fields = document.getElementById('listFields');
+            if (option === 'none') {
+                fields.classList.add('hidden');
+            } else {
+                fields.classList.remove('hidden');
+            }
+        }
+
+        async function generateAttendancePDF(studentsGroup, groupBy, groupValue, evalName, courseName) {
+            const pdfDoc = await PDFDocument.create();
+            const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+            const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+            // Trier : par numéro de table (croissant) si par local, alphabétique si par section
+            const sorted = [...studentsGroup].sort((a, b) => {
+                if (groupBy === 'local') {
+                    return parseInt(a.table, 10) - parseInt(b.table, 10);
+                }
+                return a.name.localeCompare(b.name, 'fr');
+            });
+
+            // Configuration du tableau
+            const pageWidth = 612; // Lettre portrait
+            const pageHeight = 792;
+            const margin = 40;
+            const titleSize = 13;
+            const headerSize = 10;
+            const rowSize = 10;
+            const rowHeight = 22;
+            const headerHeight = 25;
+            const colWidths = [190, 75, 55, 75, 65]; // Nom, Matricule, Table, Section/Local, Présence
+            const tableTop = pageHeight - margin - 45;
+
+            // En-têtes selon le mode
+            let headers, fourthColLabel;
+            if (groupBy === 'local') {
+                headers = ['Nom', 'Matricule', 'Table', 'Section', 'Présence'];
+                fourthColLabel = 'section';
+            } else {
+                headers = ['Nom', 'Matricule', 'Table', 'Local', 'Présence'];
+                fourthColLabel = 'local';
+            }
+
+            // Titre
+            const titleLabel = groupBy === 'local' ? 'Local' : 'Section';
+            const title = `Feuille de présence - ${evalName} - ${courseName} - ${titleLabel} ${groupValue}`;
+
+            // Nombre d'étudiants par page
+            const rowsPerPage = Math.floor((tableTop - margin - headerHeight) / rowHeight);
+
+            let pageIndex = 0;
+            let studentIndex = 0;
+
+            while (studentIndex < sorted.length) {
+                const page = pdfDoc.addPage([pageWidth, pageHeight]);
+                let y = pageHeight - margin;
+
+                // Titre
+                const titleWidth = fontBold.widthOfTextAtSize(title, titleSize);
+                page.drawText(title, {
+                    x: (pageWidth - titleWidth) / 2,
+                    y: y,
+                    size: titleSize,
+                    font: fontBold,
+                    color: rgb(0, 0, 0),
+                });
+                y -= 35;
+
+                // Calculer le début X du tableau (centré)
+                const totalTableWidth = colWidths.reduce((a, b) => a + b, 0);
+                const tableX = (pageWidth - totalTableWidth) / 2;
+
+                // En-tête du tableau - fond gris
+                page.drawRectangle({
+                    x: tableX,
+                    y: y - headerHeight + 5,
+                    width: totalTableWidth,
+                    height: headerHeight,
+                    color: rgb(0.85, 0.85, 0.85),
+                });
+
+                // Dessiner les en-têtes
+                let colX = tableX;
+                for (let c = 0; c < headers.length; c++) {
+                    page.drawText(headers[c], {
+                        x: colX + 5,
+                        y: y - 12,
+                        size: headerSize,
+                        font: fontBold,
+                        color: rgb(0, 0, 0),
+                    });
+                    colX += colWidths[c];
+                }
+
+                // Ligne sous l'en-tête
+                y -= headerHeight;
+
+                // Lignes de données
+                const rowsOnThisPage = Math.min(rowsPerPage, sorted.length - studentIndex);
+                for (let r = 0; r < rowsOnThisPage; r++) {
+                    const student = sorted[studentIndex];
+                    const rowY = y - (r * rowHeight);
+
+                    // Alternance de couleur de fond
+                    if (r % 2 === 0) {
+                        page.drawRectangle({
+                            x: tableX,
+                            y: rowY - rowHeight + 5,
+                            width: totalTableWidth,
+                            height: rowHeight,
+                            color: rgb(0.95, 0.95, 1),
+                        });
+                    }
+
+                    // Données
+                    const rowData = [
+                        student.name,
+                        student.ni,
+                        student.table,
+                        student[fourthColLabel],
+                        '' // case vide pour présence
+                    ];
+
+                    colX = tableX;
+                    for (let c = 0; c < rowData.length; c++) {
+                        if (c === 4) {
+                            // Case à cocher vide (petit carré)
+                            page.drawRectangle({
+                                x: colX + 25,
+                                y: rowY - 12,
+                                width: 14,
+                                height: 14,
+                                borderColor: rgb(0, 0, 0),
+                                borderWidth: 1,
+                                color: rgb(1, 1, 1),
+                            });
+                        } else {
+                            // Tronquer le texte si trop long
+                            let text = rowData[c];
+                            const maxWidth = colWidths[c] - 10;
+                            while (font.widthOfTextAtSize(text, rowSize) > maxWidth && text.length > 1) {
+                                text = text.slice(0, -1);
+                            }
+                            page.drawText(text, {
+                                x: colX + 5,
+                                y: rowY - 12,
+                                size: rowSize,
+                                font,
+                                color: rgb(0, 0, 0),
+                            });
+                        }
+                        colX += colWidths[c];
+                    }
+
+                    // Lignes horizontales
+                    page.drawLine({
+                        start: { x: tableX, y: rowY - rowHeight + 5 },
+                        end: { x: tableX + totalTableWidth, y: rowY - rowHeight + 5 },
+                        thickness: 0.5,
+                        color: rgb(0.8, 0.8, 0.8),
+                    });
+
+                    studentIndex++;
+                }
+
+                // Bordures verticales du tableau
+                const tableBottom = y - (rowsOnThisPage * rowHeight) + 5;
+                const tableTopY = y + 5;
+                colX = tableX;
+                for (let c = 0; c <= colWidths.length; c++) {
+                    page.drawLine({
+                        start: { x: colX, y: tableTopY },
+                        end: { x: colX, y: tableBottom },
+                        thickness: 0.5,
+                        color: rgb(0.6, 0.6, 0.6),
+                    });
+                    if (c < colWidths.length) colX += colWidths[c];
+                }
+
+                // Bordure extérieure
+                page.drawRectangle({
+                    x: tableX,
+                    y: tableBottom,
+                    width: totalTableWidth,
+                    height: tableTopY - tableBottom,
+                    borderColor: rgb(0.4, 0.4, 0.4),
+                    borderWidth: 1,
+                });
+
+                pageIndex++;
+            }
+
+            return await pdfDoc.save();
+        }
+
+        function sanitizeFileName(name) {
+            // Remplacer les caractères spéciaux par des underscores
+            return name
+                .replace(/[^a-zA-Z0-9À-ÿ\-]/g, '_')
+                .replace(/_+/g, '_')
+                .replace(/^_|_$/g, '');
+        }
+
+        // Permettre le glisser-déposer
+        ['csvFile', 'pdfFile'].forEach(id => {
+            const input = document.getElementById(id);
+            const parent = input.parentElement;
+
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                parent.addEventListener(eventName, preventDefaults, false);
+            });
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                parent.addEventListener(eventName, () => {
+                    input.style.borderColor = '#764ba2';
+                    input.style.background = '#f0f1ff';
+                }, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                parent.addEventListener(eventName, () => {
+                    input.style.borderColor = '#667eea';
+                    input.style.background = '#f8f9ff';
+                }, false);
+            });
+
+            parent.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                input.files = files;
+            }, false);
+        });
+    </script>
+</body>
+</html>
