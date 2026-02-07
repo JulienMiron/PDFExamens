@@ -194,12 +194,12 @@
         <p class="subtitle">Possibilité de générer des listes de présence</p>
 
         <div class="info-box">
-            <p><strong>Format CSV ou XLSX attendu :</strong></p>
-            <p>• Colonne 1 : Prénom et nom</p>
-            <p>• Colonne 2 : Numéro d'identification (NI)</p>
-            <p>• Colonne 3 : Numéro de table</p>
-            <p>• Colonne 4 : Local</p>
-            <p>• Colonne 5 : Section</p>
+            <p><strong>Le CSV ou XLSX doit avoir ces colonnes au minimum :</strong></p>
+            <p>• Prénom et nom (séparés ou non)</p>
+            <p>• Numéro d'identification (NI)</p>
+            <p>• Numéro de table</p>
+            <p>• Local</p>
+            <p>• Section</p>
         </div>
 
         <div class="upload-section">
@@ -232,20 +232,6 @@
                     <label for="niSelect">Numéro d'identification (NI)</label>
                     <select id="niSelect"></select>
                 </div>
-                <div style="flex:1">
-                    <label for="tableSelect">Numéro de table</label>
-                    <select id="tableSelect"></select>
-                </div>
-            </div>
-            <div style="display:flex;gap:8px;margin-bottom:8px;">
-                <div style="flex:1">
-                    <label for="localSelect">Local</label>
-                    <select id="localSelect"></select>
-                </div>
-                <div style="flex:1">
-                    <label for="sectionSelect">Section</label>
-                    <select id="sectionSelect"></select>
-                </div>
             </div>
             <div style="font-size:12px;color:#666">Conseil : vérifiez et modifiez si nécessaire avant de générer.</div>
         </div>
@@ -255,27 +241,50 @@
             <input type="file" id="pdfFile" accept=".pdf" required>
         </div>
 
+        <!-- attribution handled automatically by the single action button -->
+
+        <div id="roomsUI" style="margin-bottom:16px;">
+            <label>🏷️ Choisir les locaux à utiliser</label>
+            <div id="roomList" style="margin-top:8px;">
+                <div class="roomRow" style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                    <input type="checkbox" class="roomCheckbox" data-name="VCH-2850" id="room_VCH-2850" checked>
+                    <label for="room_VCH-2850" style="margin:0;font-weight:600;">VCH-2850</label>
+                    <input type="number" class="roomCapacity" data-name="VCH-2850" value="201" min="1" style="width:100px;margin-left:8px;">
+                    <div style="font-size:12px;color:#666;margin-left:8px;">places</div>
+                </div>
+                <div class="roomRow" style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                    <input type="checkbox" class="roomCheckbox" data-name="VCH-2880" id="room_VCH-2880" checked>
+                    <label for="room_VCH-2880" style="margin:0;font-weight:600;">VCH-2880</label>
+                    <input type="number" class="roomCapacity" data-name="VCH-2880" value="110" min="1" style="width:100px;margin-left:8px;">
+                    <div style="font-size:12px;color:#666;margin-left:8px;">places</div>
+                </div>
+            </div>
+            <div style="font-size:12px;color:#666">Cochez les locaux à utiliser et modifiez la capacité si besoin.</div>
+        </div>
+
         <div class="upload-section">
-            <label for="listOption">📋 Liste de présence</label>
-            <select id="listOption" onchange="toggleListFields()">
-                <option value="none">Aucune liste</option>
-                <option value="local">Liste des étudiants par locaux</option>
-                <option value="section">Liste des étudiants par section</option>
-            </select>
-        </div>
-
-        <div id="listFields" class="hidden">
-            <div class="upload-section">
-                <label for="evalName">📝 Nom de l'évaluation</label>
-                <input type="text" id="evalName" placeholder="Ex: Examen 1">
-            </div>
-            <div class="upload-section">
-                <label for="courseName">📚 Numéro du cours</label>
-                <input type="text" id="courseName" placeholder="Ex: STT-1500">
+            <label>📋 Générer une liste de présence ?</label>
+            <div style="display:flex;align-items:center;gap:12px;margin-top:8px;">
+                <input type="checkbox" id="createList">
+                <label for="createList" style="margin:0">Oui</label>
+                <div style="display:flex;align-items:center;gap:8px;margin-left:12px;">
+                    <label style="font-size:13px;margin-right:6px;">Format:</label>
+                    <label><input type="radio" name="listFormat" value="local" checked> Par local</label>
+                    <label><input type="radio" name="listFormat" value="section"> Par section</label>
+                </div>
             </div>
         </div>
 
-        <button id="generateBtn" onclick="generatePDFs()">
+        <div class="upload-section">
+            <label for="evalName">📝 Nom de l'évaluation (obligatoire)</label>
+            <input type="text" id="evalName" placeholder="Ex: Examen 1">
+        </div>
+        <div class="upload-section">
+            <label for="courseName">📚 Numéro du cours (obligatoire)</label>
+            <input type="text" id="courseName" placeholder="Ex: STT-1500">
+        </div>
+
+        <button id="generateBtn" onclick="generateAll()">
             🚀 Générer et Télécharger le ZIP
         </button>
 
@@ -318,20 +327,22 @@
         async function generatePDFs() {
             const csvFile = document.getElementById('csvFile').files[0];
             const pdfFile = document.getElementById('pdfFile').files[0];
-            
+            const evalName = document.getElementById('evalName').value.trim();
+            const courseName = document.getElementById('courseName').value.trim();
+
             if (!csvFile || !pdfFile) {
                 alert('⚠️ Veuillez sélectionner les deux fichiers (CSV/XLSX et PDF)');
                 return;
             }
 
-            const listOption = document.getElementById('listOption').value;
-            const evalName = document.getElementById('evalName').value.trim();
-            const courseName = document.getElementById('courseName').value.trim();
-
-            if (listOption !== 'none' && (!evalName || !courseName)) {
-                alert('⚠️ Veuillez saisir le nom de l\'évaluation et le numéro du cours pour générer les listes de présence.');
+            // course and exam name are mandatory
+            if (!evalName || !courseName) {
+                alert('⚠️ Veuillez saisir le nom de l\'évaluation et le numéro du cours.');
                 return;
             }
+
+            const createList = document.getElementById('createList').checked;
+            const listFormat = document.querySelector('input[name="listFormat"]:checked') ? document.querySelector('input[name="listFormat"]:checked').value : 'local';
 
             const progressDiv = document.getElementById('progress');
             const progressFill = document.getElementById('progressFill');
@@ -345,22 +356,76 @@
                 progressFill.style.width = '10%';
                 progressText.textContent = 'Lecture des fichiers...';
 
-                // Lire le CSV ou XLSX
-                let csvText;
-                if (csvFile.name.toLowerCase().endsWith('.xlsx')) {
-                    const arrayBuffer = await csvFile.arrayBuffer();
-                    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                    csvText = XLSX.utils.sheet_to_csv(firstSheet, { FS: ';' });
-                } else {
-                    csvText = await csvFile.text();
-                }
-                const students = parseCSV(csvText);
+                    // Lire le CSV ou XLSX
+                    let students = [];
+                    if (csvFile.name.toLowerCase().endsWith('.xlsx')) {
+                        const arrayBuffer = await csvFile.arrayBuffer();
+                        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                        // parcourir toutes les feuilles, section = nom de la feuille
+                        for (const sheetName of workbook.SheetNames) {
+                            const sheet = workbook.Sheets[sheetName];
+                            const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                            if (!rows || rows.length <= 6) continue; // header at line 6, data from 7
+                            const headerRow = (rows[5] || []).map(h => (h === undefined ? '' : String(h).trim()));
+                            const detection = detectNameColumn(headerRow);
+                            const niIndex = detectSingleColumn(headerRow, ['ni','matricule','identifiant','id','numero','num','dossier']);
+                            for (let r = 6; r < rows.length; r++) {
+                                const row = rows[r] || [];
+                                let name = '';
+                                if (columnMapping.nameMode === 'separate' && columnMapping.firstIdx !== null && columnMapping.lastIdx !== null) {
+                                    name = String(row[columnMapping.firstIdx] || '') + ' ' + String(row[columnMapping.lastIdx] || '');
+                                } else if (columnMapping.nameIdx !== null) {
+                                    name = String(row[columnMapping.nameIdx] || '');
+                                } else if (detection.type === 'separate') {
+                                    name = String(row[detection.indices[0]] || '') + ' ' + String(row[detection.indices[1]] || '');
+                                } else if (detection.type === 'combined' && detection.indices.length === 1) {
+                                    name = String(row[detection.indices[0]] || '');
+                                } else {
+                                    name = String(row[0] || '');
+                                }
+                                const ni = (niIndex >= 0 ? String(row[niIndex] || '') : (columnMapping.niIdx !== null ? String(row[columnMapping.niIdx] || '') : ''));
+                                const email = '';
+                                const status = 'Présent';
+                                if (String(status).toLowerCase().includes('abandon')) {}
+                                if (name || ni) students.push({ name: name.trim(), ni: ni.trim(), table: '', local: '', section: sheetName, email });
+                            }
+                        }
+                    } else {
+                        const csvText = await csvFile.text();
+                        students = parseCSV(csvText);
+                    }
                 
                 if (students.length === 0) {
                     throw new Error('Aucun étudiant trouvé dans le CSV. Vérifiez le format du fichier.');
                 }
-                
+
+                // Si une attribution a été générée précédemment, l'appliquer (par NI d'abord, sinon par nom normalisé)
+                if (typeof lastAssignments !== 'undefined' && lastAssignments && lastAssignments.length > 0) {
+                    progressText.textContent = 'Application des attributions de places...';
+                    const byNI = Object.create(null);
+                    const byName = Object.create(null);
+                    for (const a of lastAssignments) {
+                        const niKey = (a.ni || '').toString().trim();
+                        if (niKey) byNI[niKey] = a;
+                        const nameKey = normalizeHeader(a.name || '');
+                        if (nameKey) byName[nameKey] = a;
+                    }
+                    for (const s of students) {
+                        let match = null;
+                        const niKey = (s.ni || '').toString().trim();
+                        if (niKey && byNI[niKey]) match = byNI[niKey];
+                        else {
+                            const nameKey = normalizeHeader(s.name || '');
+                            if (nameKey && byName[nameKey]) match = byName[nameKey];
+                        }
+                        if (match) {
+                            s.place = match.place || '';
+                            s.table = match.place || '';
+                            s.local = match.local || '';
+                        }
+                    }
+                }
+
                 console.log(`${students.length} étudiants trouvés:`, students);
                 
                 progressFill.style.width = '20%';
@@ -376,8 +441,44 @@
                 const zip = new JSZip();
 
                 // Générer un PDF pour chaque étudiant
-                for (let i = 0; i < students.length; i++) {
-                    const student = students[i];
+                // Réordonner les étudiants : locaux avec le plus d'étudiants d'abord,
+                // puis par numéro de place croissant à l'intérieur de chaque local.
+                const grouped = {};
+                const unassigned = [];
+                for (const s of students) {
+                    const key = (s.local || '').toString() || '__UNASSIGNED__';
+                    if (!key || key === '__UNASSIGNED__') {
+                        unassigned.push(s);
+                    } else {
+                        if (!grouped[key]) grouped[key] = [];
+                        grouped[key].push(s);
+                    }
+                }
+
+                // Trier chaque groupe par place (numérique ascendant)
+                for (const k of Object.keys(grouped)) {
+                    grouped[k].sort((a,b) => {
+                        const pa = parseInt(a.place, 10);
+                        const pb = parseInt(b.place, 10);
+                        if (isNaN(pa) && isNaN(pb)) return 0;
+                        if (isNaN(pa)) return 1;
+                        if (isNaN(pb)) return -1;
+                        return pa - pb;
+                    });
+                }
+
+                // Ordonner les locaux par taille (nombre d'étudiants) décroissante
+                const localsSorted = Object.keys(grouped).sort((x,y) => grouped[y].length - grouped[x].length);
+
+                // Construire la liste ordonnée finale
+                const orderedStudents = [];
+                for (const loc of localsSorted) orderedStudents.push(...grouped[loc]);
+                // Ajouter les non assignés à la fin (triés par nom pour stabilité)
+                unassigned.sort((a,b) => normalizeHeader(a.name||'').localeCompare(normalizeHeader(b.name||'')));
+                orderedStudents.push(...unassigned);
+
+                for (let i = 0; i < orderedStudents.length; i++) {
+                    const student = orderedStudents[i];
                     const progress = 30 + (i / students.length) * 60;
                     progressFill.style.width = `${progress}%`;
                     progressText.textContent = `Génération du PDF pour ${student.name}... (${i + 1}/${students.length})`;
@@ -460,8 +561,18 @@
                     console.log(`PDF sauvegardé, taille: ${modifiedPdfBytes.length} bytes`);
                     
                     // Ajouter au ZIP avec un nom de fichier nettoyé
-                    const fileName = sanitizeFileName(student.name);
-                    const fullFileName = `${fileName}_${student.ni}.pdf`;
+                    function padPlace(p) {
+                        const n = parseInt(p, 10);
+                        if (!isFinite(n) || isNaN(n)) return '000';
+                        return String(n).padStart(3, '0');
+                    }
+
+                    const placePad = padPlace(student.place);
+                    const localPart = sanitizeFileName(student.local || 'NOLOCAL');
+                    const fileBase = buildFileBase(student);
+                    const localIndexMap = ensureLocalIndexMap();
+                    const localIndex = (student.local && localIndexMap[student.local]) ? localIndexMap[student.local] : 0;
+                    const fullFileName = `${localIndex}${placePad}_${localPart}_${fileBase}.pdf`;
                     zip.file(fullFileName, modifiedPdfBytes);
                     console.log(`Ajouté au ZIP: ${fullFileName}`);
                 }
@@ -494,6 +605,11 @@
                 progressText.textContent = 'Création du fichier ZIP...';
 
                 // Générer le ZIP
+                // ajouter le workbook d'attribution au ZIP si disponible
+                if (lastAssignmentWorkbookArray) {
+                    zip.file('Attribution_places.xlsx', lastAssignmentWorkbookArray);
+                }
+
                 const zipBlob = await zip.generateAsync({ type: 'blob' });
 
                 progressFill.style.width = '100%';
@@ -569,6 +685,260 @@
             return { type: 'none', indices: [], score: 0, match: null };
         }
 
+        // ======= Attribution automatique des places (XLSX d'inscription) =======
+        // Salles par défaut (modifiable dans le HTML plus tard)
+        const ROOMS = [
+            { name: 'VCH-2850', capacity: 201 },
+            { name: 'VCH-2880', capacity: 110 }
+        ];
+
+        // dernière attribution en mémoire (appliquée lors de la génération des PDFs)
+        let lastAssignments = null;
+        // mapping local -> index (1..n) according to local population (most students = 1)
+        let lastLocalIndexMap = null;
+        // workbook binaire (Array) de l'attribution, à inclure dans le ZIP final
+        let lastAssignmentWorkbookArray = null;
+
+        async function generateAssignments() {
+            const fileInput = document.getElementById('csvFile');
+            const file = fileInput.files[0];
+            if (!file) {
+                alert('⚠️ Veuillez sélectionner le fichier d\'inscription (XLSX) avant de générer.');
+                return;
+            }
+            if (!file.name.toLowerCase().endsWith('.xlsx')) {
+                alert('⚠️ Le fichier doit être au format .xlsx (inscription multi-feuilles).');
+                return;
+            }
+
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                const allStudents = [];
+
+                for (const sheetName of workbook.SheetNames) {
+                    const sheet = workbook.Sheets[sheetName];
+                    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                    if (!rows || rows.length <= 6) continue; // need header at row 6 and data starting row 7
+
+                    const headerRow = rows[5].map(h => (h === undefined ? '' : String(h)));
+
+                    const idxNom = detectSingleColumn(headerRow, ['nom','nom de famille','lastname','surname']);
+                    const idxPrenom = detectSingleColumn(headerRow, ['prenom','prénom','first','given','given name']);
+                    const idxEmail = detectSingleColumn(headerRow, ['mail','email','courriel','adresse courriel','adresse']);
+                    const idxNI = detectSingleColumn(headerRow, ['ni','matricule','identifiant','id','numero','numero dossier','dossier','num']);
+                    const idxStatut = detectSingleColumn(headerRow, ['statut','inscription','status','etat']);
+
+                    for (let r = 6; r < rows.length; r++) {
+                        const row = rows[r] || [];
+                        const last = (idxNom >= 0 ? (row[idxNom] || '') : '') || '';
+                        const first = (idxPrenom >= 0 ? (row[idxPrenom] || '') : '') || '';
+                        const email = (idxEmail >= 0 ? (row[idxEmail] || '') : '') || '';
+                        const ni = (idxNI >= 0 ? (row[idxNI] || '') : '') || '';
+                        const rawStatus = (idxStatut >= 0 ? (row[idxStatut] || '') : '') || '';
+
+                        const status = normalizeHeader(rawStatus).includes('abandon') ? 'Abandon' : 'Présent';
+                        const fullName = (String(first).trim() + ' ' + String(last).trim()).trim();
+                        if (!fullName && !ni) continue;
+                        allStudents.push({ name: fullName || ni, first: first, last: last, ni: String(ni).trim(), email: String(email).trim(), status, section: sheetName });
+                    }
+                }
+
+                if (allStudents.length === 0) {
+                    alert('Aucun étudiant détecté dans le fichier d\'inscription. Vérifiez la structure (en-têtes en ligne 6).');
+                    return;
+                }
+
+                // Récupérer les locaux sélectionnés dans l'UI (si aucun sélectionné -> alerte)
+                const roomsToUse = getSelectedRooms();
+                if (!roomsToUse || roomsToUse.length === 0) {
+                    alert('⚠️ Veuillez sélectionner au moins un local dans l\'interface avant de générer l\'attribution.');
+                    return;
+                }
+
+                // Trier les étudiants par nom de famille (ordre croissant) avant attribution
+                allStudents.sort((a, b) => {
+                    const getLast = s => (s.last && String(s.last).trim()) || (s.name ? String(s.name).trim().split(/\s+/).slice(-1)[0] : '');
+                    const la = getLast(a).toString();
+                    const lb = getLast(b).toString();
+                    return la.localeCompare(lb, 'fr', { sensitivity: 'base' });
+                });
+
+                // Répartir les étudiants dans les salles (remplir la plus grande d'abord)
+                const assigned = assignSeatsToRooms(allStudents, roomsToUse);
+
+                // Générer workbook d'attribution
+                const sheetData = assigned.map(s => ({
+                    'Prénom et nom': s.name,
+                    'NI': s.ni,
+                    'Local': s.local,
+                    'Place': s.place,
+                    'adresse courriel': s.email,
+                    'Accommodement': 'non',
+                    'statut d\'inscription': s.status
+                }));
+
+                const ws = XLSX.utils.json_to_sheet(sheetData, { header: ['Prénom et nom','NI','Local','Place','adresse courriel','Accommodement','statut d\'inscription'] });
+                const wbOut = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wbOut, ws, 'Attribution');
+                const wbArray = XLSX.write(wbOut, { bookType: 'xlsx', type: 'array' });
+
+                // stocker en mémoire pour réutilisation lors de la génération des PDFs
+                lastAssignments = assigned;
+                lastAssignmentWorkbookArray = wbArray;
+                // construire le mapping local -> index (1..n) basé sur le nombre d'étudiants par local (desc)
+                const counts = Object.create(null);
+                for (const s of assigned) {
+                    if (s.local) counts[s.local] = (counts[s.local] || 0) + 1;
+                }
+                const localsSorted = Object.keys(counts).sort((a,b) => counts[b] - counts[a]);
+                lastLocalIndexMap = Object.create(null);
+                localsSorted.forEach((loc, idx) => { lastLocalIndexMap[loc] = idx + 1; });
+                alert(`✅ Attribution terminée (${assigned.length} étudiants). L'attribution sera incluse dans le ZIP final.`);
+            } catch (err) {
+                console.error(err);
+                alert('Erreur lors de la génération des attributions: ' + err.message);
+            }
+        }
+
+        function assignSeatsToRooms(students, rooms) {
+            // rooms : [{name,capacity}] - fill largest to smallest
+            const sortedRooms = [...rooms].sort((a,b)=>b.capacity - a.capacity);
+            const assigned = [];
+            let studentIndex = 0;
+            for (const room of sortedRooms) {
+                for (let seat = 1; seat <= room.capacity && studentIndex < students.length; seat++) {
+                    const s = students[studentIndex++];
+                    assigned.push({ ...s, local: room.name, place: String(seat) });
+                }
+                if (studentIndex >= students.length) break;
+            }
+            // If still students left (more than total capacity), append them with empty local/seat
+            while (studentIndex < students.length) {
+                const s = students[studentIndex++];
+                assigned.push({ ...s, local: '', place: '' });
+            }
+            return assigned;
+        }
+
+        function ensureLocalIndexMap() {
+            if (lastLocalIndexMap) return lastLocalIndexMap;
+            lastLocalIndexMap = Object.create(null);
+            if (!lastAssignments || lastAssignments.length === 0) return lastLocalIndexMap;
+            const counts = Object.create(null);
+            for (const s of lastAssignments) {
+                if (s.local) counts[s.local] = (counts[s.local] || 0) + 1;
+            }
+            const localsSorted = Object.keys(counts).sort((a,b) => counts[b] - counts[a]);
+            localsSorted.forEach((loc, idx) => { lastLocalIndexMap[loc] = idx + 1; });
+            return lastLocalIndexMap;
+        }
+
+        // Single action: compute assignments in-memory then generate PDFs (and optional lists)
+        async function generateAll() {
+            const csvFile = document.getElementById('csvFile').files[0];
+            const pdfFile = document.getElementById('pdfFile').files[0];
+            const evalName = document.getElementById('evalName').value.trim();
+            const courseName = document.getElementById('courseName').value.trim();
+
+            if (!csvFile || !pdfFile) {
+                alert('⚠️ Veuillez sélectionner les deux fichiers (inscription et PDF)');
+                return;
+            }
+            if (!evalName || !courseName) {
+                alert('⚠️ Veuillez saisir le nom de l\'évaluation et le numéro du cours.');
+                return;
+            }
+
+            // read students from registration file (XLSX multi-sheet or CSV)
+            try {
+                let allStudents = [];
+                if (csvFile.name.toLowerCase().endsWith('.xlsx')) {
+                    const arrayBuffer = await csvFile.arrayBuffer();
+                    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                    for (const sheetName of workbook.SheetNames) {
+                        const sheet = workbook.Sheets[sheetName];
+                        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                        if (!rows || rows.length <= 6) continue;
+                        const headerRow = rows[5].map(h => (h === undefined ? '' : String(h)));
+                        const idxNom = detectSingleColumn(headerRow, ['nom','nom de famille','lastname','surname']);
+                        const idxPrenom = detectSingleColumn(headerRow, ['prenom','prénom','first','given','given name']);
+                        const idxEmail = detectSingleColumn(headerRow, ['mail','email','courriel','adresse courriel','adresse']);
+                        const idxNI = detectSingleColumn(headerRow, ['ni','matricule','identifiant','id','numero','numero dossier','dossier','num']);
+                        const idxStatut = detectSingleColumn(headerRow, ['statut','inscription','status','etat']);
+
+                        for (let r = 6; r < rows.length; r++) {
+                            const row = rows[r] || [];
+                            const last = (idxNom >= 0 ? (row[idxNom] || '') : '') || '';
+                            const first = (idxPrenom >= 0 ? (row[idxPrenom] || '') : '') || '';
+                            const email = (idxEmail >= 0 ? (row[idxEmail] || '') : '') || '';
+                            const ni = (idxNI >= 0 ? (row[idxNI] || '') : '') || '';
+                            const rawStatus = (idxStatut >= 0 ? (row[idxStatut] || '') : '') || '';
+                            const status = normalizeHeader(rawStatus).includes('abandon') ? 'Abandon' : 'Présent';
+                            const fullName = (String(first).trim() + ' ' + String(last).trim()).trim();
+                            if (!fullName && !ni) continue;
+                            allStudents.push({ name: fullName || ni, first: first, last: last, ni: String(ni).trim(), email: String(email).trim(), status, section: sheetName });
+                        }
+                    }
+                } else {
+                    const csvText = await csvFile.text();
+                    allStudents = parseCSV(csvText);
+                }
+
+                if (allStudents.length === 0) {
+                    alert('Aucun étudiant détecté dans le fichier d\'inscription.');
+                    return;
+                }
+
+                // get selected rooms and assign
+                const roomsToUse = getSelectedRooms();
+                if (!roomsToUse || roomsToUse.length === 0) {
+                    alert('⚠️ Veuillez sélectionner au moins un local dans l\'interface avant de générer l\'attribution.');
+                    return;
+                }
+
+                // tri par nom de famille avant attribution
+                allStudents.sort((a, b) => {
+                    const getLast = s => (s.last && String(s.last).trim()) || (s.name ? String(s.name).trim().split(/\s+/).slice(-1)[0] : '');
+                    const la = getLast(a).toString();
+                    const lb = getLast(b).toString();
+                    return la.localeCompare(lb, 'fr', { sensitivity: 'base' });
+                });
+
+                const assigned = assignSeatsToRooms(allStudents, roomsToUse);
+                lastAssignments = assigned;
+
+                // build and store local index map
+                const counts = Object.create(null);
+                for (const s of assigned) if (s.local) counts[s.local] = (counts[s.local] || 0) + 1;
+                const localsSorted = Object.keys(counts).sort((a,b) => counts[b] - counts[a]);
+                lastLocalIndexMap = Object.create(null);
+                localsSorted.forEach((loc, idx) => { lastLocalIndexMap[loc] = idx + 1; });
+
+                // proceed to generate PDFs (and lists if requested)
+                await generatePDFs();
+            } catch (err) {
+                console.error(err);
+                alert('Erreur lors du traitement : ' + err.message);
+            }
+        }
+
+        function getSelectedRooms() {
+            const rows = Array.from(document.querySelectorAll('#roomList .roomRow'));
+            const rooms = [];
+            for (const row of rows) {
+                const checkbox = row.querySelector('.roomCheckbox');
+                const capacityInput = row.querySelector('.roomCapacity');
+                if (!checkbox || !capacityInput) continue;
+                if (checkbox.checked) {
+                    const name = checkbox.dataset.name || checkbox.id.replace('room_','');
+                    const cap = parseInt(capacityInput.value, 10) || 0;
+                    if (cap > 0) rooms.push({ name: String(name), capacity: cap });
+                }
+            }
+            return rooms;
+        }
+
         function detectSingleColumn(headers, keywords) {
             const normalized = headers.map(h => normalizeHeader(h));
             for (let i = 0; i < normalized.length; i++) {
@@ -586,10 +956,7 @@
             nameIdx: null,
             firstIdx: null,
             lastIdx: null,
-            niIdx: null,
-            tableIdx: null,
-            localIdx: null,
-            sectionIdx: null
+            niIdx: null
         };
 
         document.getElementById('csvFile').addEventListener('change', onCsvFileSelected);
@@ -601,7 +968,7 @@
             document.getElementById('lastNameSelect').disabled = !separate;
         });
 
-        ['nameCombinedSelect','firstNameSelect','lastNameSelect','niSelect','tableSelect','localSelect','sectionSelect']
+        ['nameCombinedSelect','firstNameSelect','lastNameSelect','niSelect']
             .forEach(id => document.getElementById(id).addEventListener('change', () => updateMappingFromUI()));
 
         async function onCsvFileSelected(e) {
@@ -614,14 +981,14 @@
                     const workbook = XLSX.read(arrayBuffer, { type: 'array' });
                     const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
                     const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
-                    if (rows && rows.length) headers = (rows[0] || []).map(h => h === undefined ? '' : h.toString());
+                    if (rows && rows.length > 5) headers = (rows[5] || []).map(h => h === undefined ? '' : h.toString());
                 } else {
                     const text = await file.text();
-                    const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
-                    if (lines.length) {
-                        const first = lines[0];
-                        const sep = first.includes(';') ? ';' : (first.includes(',') ? ',' : ',');
-                        headers = first.split(sep).map(h => h === undefined ? '' : h.toString().trim());
+                    const raw = text.split(/\r?\n/);
+                    if (raw.length > 5) {
+                        const headerLine = raw[5];
+                        const sep = headerLine && headerLine.includes(';') ? ';' : (headerLine && headerLine.includes(',') ? ',' : ',');
+                        headers = headerLine.split(sep).map(h => h === undefined ? '' : h.toString().trim());
                     }
                 }
             } catch (err) {
@@ -650,18 +1017,12 @@
             // autres champs
             const ni = detectSingleColumn(headers, ['ni','matricule','identifiant','id','numero','num']);
             if (ni >= 0) document.getElementById('niSelect').value = String(ni);
-            const table = detectSingleColumn(headers, ['table','no table','numero table','num table']);
-            if (table >= 0) document.getElementById('tableSelect').value = String(table);
-            const local = detectSingleColumn(headers, ['local','salle','room','location']);
-            if (local >= 0) document.getElementById('localSelect').value = String(local);
-            const section = detectSingleColumn(headers, ['section','groupe','group']);
-            if (section >= 0) document.getElementById('sectionSelect').value = String(section);
 
             updateMappingFromUI();
         }
 
         function populateAllSelects(headers) {
-            const ids = ['nameCombinedSelect','firstNameSelect','lastNameSelect','niSelect','tableSelect','localSelect','sectionSelect'];
+            const ids = ['nameCombinedSelect','firstNameSelect','lastNameSelect','niSelect'];
             ids.forEach(id => populateSelect(id, headers));
             // enable/disable according to current mode
             const separate = document.getElementById('nameSeparate').checked;
@@ -692,54 +1053,41 @@
             columnMapping.firstIdx = document.getElementById('firstNameSelect').value === '' ? null : parseInt(document.getElementById('firstNameSelect').value,10);
             columnMapping.lastIdx = document.getElementById('lastNameSelect').value === '' ? null : parseInt(document.getElementById('lastNameSelect').value,10);
             columnMapping.niIdx = document.getElementById('niSelect').value === '' ? null : parseInt(document.getElementById('niSelect').value,10);
-            columnMapping.tableIdx = document.getElementById('tableSelect').value === '' ? null : parseInt(document.getElementById('tableSelect').value,10);
-            columnMapping.localIdx = document.getElementById('localSelect').value === '' ? null : parseInt(document.getElementById('localSelect').value,10);
-            columnMapping.sectionIdx = document.getElementById('sectionSelect').value === '' ? null : parseInt(document.getElementById('sectionSelect').value,10);
         }
 
         function parseCSV(csvText) {
             csvText = csvText.replace(/^\uFEFF/, '');
-            const lines = csvText.split(/\r?\n/).filter(l => l.trim() !== '');
+            const rawLines = csvText.split(/\r?\n/);
             const students = [];
-            if (lines.length === 0) return students;
+            if (rawLines.length <= 5) return students;
 
-            // Détecter séparateur à partir de la première ligne
-            const headerLine = lines[0];
+            // Détecter séparateur à partir de la ligne d'en-tête (ligne 6)
+            const headerLine = rawLines[5] || '';
             const sep = headerLine.includes(';') ? ';' : (headerLine.includes(',') ? ',' : ',');
             const headers = headerLine.split(sep).map(h => (h === undefined ? '' : h.trim()));
 
             const detection = detectNameColumn(headers);
 
             const niKeywords = ['ni','matricule','identifiant','id','numero','num','matricule'];
-            const tableKeywords = ['table','no table','no_table','numero table','numero de table','num table','tableau'];
-            const localKeywords = ['local','salle','room','location'];
-            const sectionKeywords = ['section','groupe','group','groupes'];
-
             const niIndex = detectSingleColumn(headers, niKeywords);
-            const tableIndex = detectSingleColumn(headers, tableKeywords);
-            const localIndex = detectSingleColumn(headers, localKeywords);
-            const sectionIndex = detectSingleColumn(headers, sectionKeywords);
 
-            // Afficher le résultat de la détection pour l'utilisateur
+            // Afficher le résultat de la détection pour l'utilisateur (nom + NI)
             const mappingLines = [];
             if (detection.type !== 'none') {
                 mappingLines.push(`<strong>Détection nom:</strong> ${detection.match} (type: ${detection.type}, score: ${Math.round(detection.score*100)}%)`);
             } else {
-                mappingLines.push('<strong>Détection nom:</strong> non trouvée — utilisation des positions par défaut (1..5)');
+                mappingLines.push('<strong>Détection nom:</strong> non trouvée — utilisation des positions par défaut');
             }
             mappingLines.push(`<strong>NI:</strong> ${niIndex>=0 ? headers[niIndex] : 'non détecté'}`);
-            mappingLines.push(`<strong>Table:</strong> ${tableIndex>=0 ? headers[tableIndex] : 'non détecté'}`);
-            mappingLines.push(`<strong>Local:</strong> ${localIndex>=0 ? headers[localIndex] : 'non détecté'}`);
-            mappingLines.push(`<strong>Section:</strong> ${sectionIndex>=0 ? headers[sectionIndex] : 'non détecté'}`);
             const detDiv = document.getElementById('detectionResult');
             if (detDiv) detDiv.innerHTML = mappingLines.join('<br>');
 
             // Fallback indices par défaut
-            const fallback = { nameIdx: 0, niIdx: 1, tableIdx: 2, localIdx: 3, sectionIdx: 4 };
+            const fallback = { nameIdx: 0, niIdx: 1 };
             const nameIsSeparate = (detection.type === 'separate' && detection.indices.length === 2);
 
-            for (let i = 1; i < lines.length; i++) {
-                const line = lines[i];
+            for (let i = 6; i < rawLines.length; i++) {
+                const line = rawLines[i] || '';
                 if (!line.trim()) continue;
                 const parts = line.split(sep);
 
@@ -759,9 +1107,9 @@
                 }
 
                 const ni = (columnMapping.niIdx !== null ? (parts[columnMapping.niIdx] || '') : (niIndex >= 0 ? (parts[niIndex] || '') : (parts[fallback.niIdx] || ''))).trim();
-                const table = (columnMapping.tableIdx !== null ? (parts[columnMapping.tableIdx] || '') : (tableIndex >= 0 ? (parts[tableIndex] || '') : (parts[fallback.tableIdx] || ''))).trim();
-                const local = (columnMapping.localIdx !== null ? (parts[columnMapping.localIdx] || '') : (localIndex >= 0 ? (parts[localIndex] || '') : (parts[fallback.localIdx] || ''))).trim();
-                const section = (columnMapping.sectionIdx !== null ? (parts[columnMapping.sectionIdx] || '') : (sectionIndex >= 0 ? (parts[sectionIndex] || '') : (parts[fallback.sectionIdx] || ''))).trim();
+                const table = '';
+                const local = '';
+                const section = '';
 
                 if (name || ni) {
                     students.push({ name: name || ni, ni, table, local, section });
@@ -975,6 +1323,29 @@
                 .replace(/[^a-zA-Z0-9À-ÿ\-]/g, '_')
                 .replace(/_+/g, '_')
                 .replace(/^_|_$/g, '');
+        }
+
+        function buildFileBase(student) {
+            const name = (student && student.name) ? String(student.name).trim() : '';
+            let first = student && student.first ? String(student.first).trim() : '';
+            let last = student && student.last ? String(student.last).trim() : '';
+
+            if (!last && name) {
+                const parts = name.split(/\s+/).filter(Boolean);
+                if (parts.length > 1) {
+                    last = parts[parts.length - 1];
+                    first = parts.slice(0, parts.length - 1).join(' ');
+                } else {
+                    last = parts[0] || '';
+                    first = '';
+                }
+            }
+
+            const parts = [];
+            if (last) parts.push(last);
+            if (first) parts.push(first);
+            const base = parts.join('_') || (student && student.ni ? String(student.ni) : 'student');
+            return sanitizeFileName(base);
         }
 
         // Permettre le glisser-déposer
