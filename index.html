@@ -577,12 +577,12 @@
                     console.log(`Ajouté au ZIP: ${fullFileName}`);
                 }
 
-                // Générer les listes de présence si demandé
-                if (listOption !== 'none') {
+                // Générer les listes de présence si demandé via la nouvelle UI
+                if (createList) {
                     progressFill.style.width = '92%';
                     progressText.textContent = 'Génération des listes de présence...';
 
-                    const groupBy = listOption; // 'local' ou 'section'
+                    const groupBy = listFormat; // 'local' ou 'section'
                     const groups = {};
                     for (const student of students) {
                         const key = student[groupBy];
@@ -1121,13 +1121,7 @@
         }
 
         function toggleListFields() {
-            const option = document.getElementById('listOption').value;
-            const fields = document.getElementById('listFields');
-            if (option === 'none') {
-                fields.classList.add('hidden');
-            } else {
-                fields.classList.remove('hidden');
-            }
+                    // legacy: removed listOption select; no-op
         }
 
         async function generateAttendancePDF(studentsGroup, groupBy, groupValue, evalName, courseName) {
