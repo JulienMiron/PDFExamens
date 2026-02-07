@@ -217,6 +217,12 @@
             </div>
         </div>
 
+        <div class="upload-section">
+            <label for="filterFiles">🔍 Fichiers de liste (optionnel) — plusieurs acceptés</label>
+            <input type="file" id="filterFiles" accept=".csv,.xlsx" multiple>
+            <div id="filterResult" style="margin-top:10px;font-size:13px;color:#333;display:none;"></div>
+        </div>
+
         <div class="upload-section" id="mappingUI" style="display:none;">
             <label>🔧 Vérifier / choisir les colonnes</label>
             <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center;">
@@ -780,6 +786,42 @@
                 } else {
                     remaining.push(...allStudents);
                 }
+                    // Séparer les accommodements (si fournis) et appliquer les exclusions par fichiers avant attribution
+                    const accomList = [];
+                    const remaining = [];
+                    if (accomNISet && accomNISet.size > 0) {
+                        for (const s of allStudents) {
+                            const key = (s.ni || '').toString().trim();
+                            if (key && accomNISet.has(key)) {
+                                accomList.push({ ...s, local: 'ACCOMMODEMENT', place: 'X' });
+                            } else if (filterExcludeNISet && filterExcludeNISet.size > 0 && key && filterExcludeNISet.has(key)) {
+                                // excluded by filter: skip entirely
+                                continue;
+                            } else {
+                                remaining.push(s);
+                            }
+                        }
+                    } else {
+                        for (const s of allStudents) {
+                            const key = (s.ni || '').toString().trim();
+                            if (filterExcludeNISet && filterExcludeNISet.size > 0 && key && filterExcludeNISet.has(key)) {
+                                continue;
+                            }
+                            remaining.push(s);
+                        }
+                    }
+
+                    // tri par nom de famille avant attribution (sur les étudiants restants)
+                    remaining.sort((a, b) => {
+                        const getLast = s => (s.last && String(s.last).trim()) || (s.name ? String(s.name).trim().split(/\s+/).slice(-1)[0] : '');
+                        const la = getLast(a).toString();
+                        const lb = getLast(b).toString();
+                        return la.localeCompare(lb, 'fr', { sensitivity: 'base' });
+                    });
+
+                    const assignedRegular = assignSeatsToRooms(remaining, roomsToUse);
+                    // concaténer les accommodements (ils restent en dehors du placement normal)
+                    const assigned = assignedRegular.concat(accomList);
 
                 // Trier les étudiants restant par nom de famille (ordre croissant) avant attribution
                 remaining.sort((a, b) => {
@@ -1005,9 +1047,12 @@
         // Accommodements
         let accomHeaders = [];
         let accomNISet = null; // Set of NI strings
+        // Filtres (exclusion via fichiers de liste)
+        let filterExcludeNISet = null; // Set of NI strings to exclude when TypeInscription != 'Campus UL'
 
         document.getElementById('csvFile').addEventListener('change', onCsvFileSelected);
         document.getElementById('accomFile').addEventListener('change', onAccomFileSelected);
+        document.getElementById('filterFiles').addEventListener('change', onFilterFilesSelected);
         document.getElementById('nameSeparate').addEventListener('change', (e) => {
             const separate = e.target.checked;
             columnMapping.nameMode = separate ? 'separate' : 'combined';
@@ -1186,6 +1231,83 @@
                 }
             } catch (err) {
                 console.error('Erreur buildAccomNISet:', err);
+            }
+        }
+
+        async function onFilterFilesSelected(e) {
+            const files = Array.from(e.target.files || []);
+            filterExcludeNISet = new Set();
+            const resultDiv = document.getElementById('filterResult');
+            if (!files || files.length === 0) { if (resultDiv) resultDiv.style.display = 'none'; return; }
+
+            let totalExcluded = 0;
+            for (const file of files) {
+                try {
+                    if (file.name.toLowerCase().endsWith('.xlsx')) {
+                        const arrayBuffer = await file.arrayBuffer();
+                        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                        if (!rows || rows.length === 0) continue;
+
+                        // try to detect header row by looking for TypeInscription-like header
+                        let headerRowIndex = -1;
+                        for (let r = 0; r < Math.min(rows.length, 10); r++) {
+                            const norm = (rows[r] || []).map(c => normalizeHeader(String(c || '')));
+                            if (norm.some(c => /typeinscription|type_inscription|type inscription|type/.test(c))) { headerRowIndex = r; break; }
+                        }
+                        if (headerRowIndex === -1) headerRowIndex = Math.min(2, rows.length-1);
+
+                        const headerRow = (rows[headerRowIndex] || []).map(h => h === undefined ? '' : String(h));
+                        const typeIdx = detectSingleColumn(headerRow, ['typeinscription','type inscription','type','type_inscription']);
+                        const niIdx = detectSingleColumn(headerRow, ['ni','matricule','identifiant','id','numero','num','dossier']);
+
+                        const startRow = Math.max(3, headerRowIndex + 1);
+                        for (let r = startRow; r < rows.length; r++) {
+                            const row = rows[r] || [];
+                            const typeVal = (typeIdx >=0 ? String(row[typeIdx] || '') : '').trim();
+                            if (!typeVal) continue;
+                            const normType = normalizeHeader(typeVal);
+                            if (normType !== 'campus ul' && normType !== 'campusul') {
+                                const niVal = (niIdx >= 0 ? row[niIdx] : undefined);
+                                if (niVal !== undefined && niVal !== null && String(niVal).trim() !== '') {
+                                    filterExcludeNISet.add(String(niVal).trim());
+                                    totalExcluded++;
+                                }
+                            }
+                        }
+                    } else {
+                        const text = await file.text();
+                        const raw = text.split(/\r?\n/);
+                        if (raw.length <= 3) continue;
+                        const headerLine = raw[2] || '';
+                        const sep = headerLine.includes(';') ? ';' : (headerLine.includes(',') ? ',' : ',');
+                        const headerParts = headerLine.split(sep).map(h => (h===undefined?'':h.trim()));
+                        const typeIdx = detectSingleColumn(headerParts, ['typeinscription','type inscription','type','type_inscription']);
+                        const niIdx = detectSingleColumn(headerParts, ['ni','matricule','identifiant','id','numero','num','dossier']);
+                        for (let i = 3; i < raw.length; i++) {
+                            const line = raw[i] || ''; if (!line.trim()) continue;
+                            const parts = line.split(sep);
+                            const typeVal = (typeIdx >= 0 ? (parts[typeIdx] || '') : '').trim();
+                            if (!typeVal) continue;
+                            const normType = normalizeHeader(typeVal);
+                            if (normType !== 'campus ul' && normType !== 'campusul') {
+                                const niVal = (niIdx >= 0 ? parts[niIdx] : undefined);
+                                if (niVal !== undefined && niVal !== null && String(niVal).trim() !== '') {
+                                    filterExcludeNISet.add(String(niVal).trim());
+                                    totalExcluded++;
+                                }
+                            }
+                        }
+                    }
+                } catch (err) {
+                    console.error('Erreur lecture filter file', file.name, err);
+                }
+            }
+
+            if (resultDiv) {
+                resultDiv.style.display = 'block';
+                resultDiv.textContent = `Fichiers: ${files.length} — étudiants exclus détectés: ${totalExcluded}`;
             }
         }
 
