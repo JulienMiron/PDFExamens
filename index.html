@@ -208,6 +208,15 @@
             <div id="detectionResult" style="margin-top:10px;font-size:13px;color:#333"></div>
         </div>
 
+        <div class="upload-section">
+            <label for="accomFile">🟪 Fichier d'accommodements (optionnel)</label>
+            <input type="file" id="accomFile" accept=".csv,.xlsx">
+            <div id="accomMap" style="margin-top:10px;font-size:13px;color:#333;display:none;">
+                <label for="accomNiSelect">Colonne contenant le numéro de dossier (NI)</label>
+                <select id="accomNiSelect"></select>
+            </div>
+        </div>
+
         <div class="upload-section" id="mappingUI" style="display:none;">
             <label>🔧 Vérifier / choisir les colonnes</label>
             <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center;">
@@ -756,16 +765,33 @@
                     return;
                 }
 
-                // Trier les étudiants par nom de famille (ordre croissant) avant attribution
-                allStudents.sort((a, b) => {
+                // Séparer les accommodements (si fournis) avant attribution
+                const accomList = [];
+                const remaining = [];
+                if (accomNISet && accomNISet.size > 0) {
+                    for (const s of allStudents) {
+                        const key = (s.ni || '').toString().trim();
+                        if (key && accomNISet.has(key)) {
+                            accomList.push({ ...s, local: 'ACCOMMODEMENT', place: 'X' });
+                        } else {
+                            remaining.push(s);
+                        }
+                    }
+                } else {
+                    remaining.push(...allStudents);
+                }
+
+                // Trier les étudiants restant par nom de famille (ordre croissant) avant attribution
+                remaining.sort((a, b) => {
                     const getLast = s => (s.last && String(s.last).trim()) || (s.name ? String(s.name).trim().split(/\s+/).slice(-1)[0] : '');
                     const la = getLast(a).toString();
                     const lb = getLast(b).toString();
                     return la.localeCompare(lb, 'fr', { sensitivity: 'base' });
                 });
-
                 // Répartir les étudiants dans les salles (remplir la plus grande d'abord)
-                const assigned = assignSeatsToRooms(allStudents, roomsToUse);
+                const assignedRegular = assignSeatsToRooms(remaining, roomsToUse);
+                // concaténer les accommodements (ils restent en dehors du placement normal)
+                const assigned = assignedRegular.concat(accomList);
 
                 // Générer workbook d'attribution
                 const sheetData = assigned.map(s => ({
@@ -774,7 +800,7 @@
                     'Local': s.local,
                     'Place': s.place,
                     'adresse courriel': s.email,
-                    'Accommodement': 'non',
+                    'Accommodement': (accomNISet && accomNISet.size>0 && s.ni && accomNISet.has(String(s.ni).trim())) ? 'oui' : 'non',
                     'statut d\'inscription': s.status
                 }));
 
@@ -897,15 +923,32 @@
                     return;
                 }
 
-                // tri par nom de famille avant attribution
-                allStudents.sort((a, b) => {
+                // Séparer les accommodements (si fournis) avant attribution
+                const accomList = [];
+                const remaining = [];
+                if (accomNISet && accomNISet.size > 0) {
+                    for (const s of allStudents) {
+                        const key = (s.ni || '').toString().trim();
+                        if (key && accomNISet.has(key)) {
+                            accomList.push({ ...s, local: 'ACCOMMODEMENT', place: 'X' });
+                        } else {
+                            remaining.push(s);
+                        }
+                    }
+                } else {
+                    remaining.push(...allStudents);
+                }
+
+                // tri par nom de famille avant attribution (sur les étudiants restants)
+                remaining.sort((a, b) => {
                     const getLast = s => (s.last && String(s.last).trim()) || (s.name ? String(s.name).trim().split(/\s+/).slice(-1)[0] : '');
                     const la = getLast(a).toString();
                     const lb = getLast(b).toString();
                     return la.localeCompare(lb, 'fr', { sensitivity: 'base' });
                 });
 
-                const assigned = assignSeatsToRooms(allStudents, roomsToUse);
+                const assignedRegular = assignSeatsToRooms(remaining, roomsToUse);
+                const assigned = assignedRegular.concat(accomList);
                 lastAssignments = assigned;
 
                 // build and store local index map
@@ -959,7 +1002,12 @@
             niIdx: null
         };
 
+        // Accommodements
+        let accomHeaders = [];
+        let accomNISet = null; // Set of NI strings
+
         document.getElementById('csvFile').addEventListener('change', onCsvFileSelected);
+        document.getElementById('accomFile').addEventListener('change', onAccomFileSelected);
         document.getElementById('nameSeparate').addEventListener('change', (e) => {
             const separate = e.target.checked;
             columnMapping.nameMode = separate ? 'separate' : 'combined';
@@ -1004,10 +1052,27 @@
             // Pré-sélectionner à partir de la détection heuristique
             const detection = detectNameColumn(headers);
             if (detection.type === 'separate') {
+                // determine which index corresponds to prénom vs nom
+                const norm = headers.map(h => normalizeHeader(h));
+                const i0 = detection.indices[0];
+                const i1 = detection.indices[1];
+                const a = norm[i0] || '';
+                const b = norm[i1] || '';
+                const firstKeywords = ['prenom','prénom','first','given'];
+                const lastKeywords = ['nom','last','family','surname'];
+
+                let firstIdx = i0;
+                let lastIdx = i1;
+                if (firstKeywords.some(k => a.includes(k)) || lastKeywords.some(k => b.includes(k))) {
+                    firstIdx = i0; lastIdx = i1;
+                } else if (firstKeywords.some(k => b.includes(k)) || lastKeywords.some(k => a.includes(k))) {
+                    firstIdx = i1; lastIdx = i0;
+                }
+
                 document.getElementById('nameSeparate').checked = true;
                 columnMapping.nameMode = 'separate';
-                document.getElementById('firstNameSelect').value = String(detection.indices[0]);
-                document.getElementById('lastNameSelect').value = String(detection.indices[1]);
+                document.getElementById('firstNameSelect').value = String(firstIdx);
+                document.getElementById('lastNameSelect').value = String(lastIdx);
             } else if (detection.type === 'combined') {
                 document.getElementById('nameSeparate').checked = false;
                 columnMapping.nameMode = 'combined';
@@ -1019,6 +1084,109 @@
             if (ni >= 0) document.getElementById('niSelect').value = String(ni);
 
             updateMappingFromUI();
+        }
+
+        async function onAccomFileSelected(e) {
+            const file = e.target.files[0];
+            accomHeaders = [];
+            accomNISet = null;
+            const mapDiv = document.getElementById('accomMap');
+            const select = document.getElementById('accomNiSelect');
+            select.innerHTML = '';
+            if (!file) { if (mapDiv) mapDiv.style.display = 'none'; return; }
+
+            try {
+                if (file.name.toLowerCase().endsWith('.xlsx')) {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+                    if (rows && rows.length) {
+                        // try to find a header row containing 'matricule' or 'ni', else use first non-empty row
+                        let headerRow = null;
+                        for (let r = 0; r < Math.min(rows.length, 10); r++) {
+                            const row = (rows[r] || []).map(c => normalizeHeader(String(c || '')));
+                            if (row.some(c => /matricul|ni|identif|dossier|numero/.test(c))) { headerRow = rows[r]; break; }
+                        }
+                        if (!headerRow) headerRow = rows[0];
+                        accomHeaders = (headerRow || []).map(h => h === undefined ? '' : String(h));
+                    }
+                } else {
+                    const text = await file.text();
+                    const raw = text.split(/\r?\n/).filter(Boolean);
+                    if (raw.length) {
+                        const first = raw[0];
+                        const sep = first.includes(';') ? ';' : (first.includes(',') ? ',' : ',');
+                        accomHeaders = first.split(sep).map(h => h === undefined ? '' : h.toString().trim());
+                    }
+                }
+            } catch (err) {
+                console.error('Erreur lecture accom:', err);
+            }
+
+            if (accomHeaders.length === 0) {
+                if (mapDiv) mapDiv.style.display = 'none';
+                return;
+            }
+
+            // populate select
+            const none = document.createElement('option'); none.value = ''; none.textContent = '-- choisir colonne --'; select.appendChild(none);
+            accomHeaders.forEach((h,idx) => {
+                const o = document.createElement('option'); o.value = String(idx); o.textContent = `${idx+1}: ${h}`; select.appendChild(o);
+            });
+
+            // default to matricule-like header if present
+            const norm = accomHeaders.map(h => normalizeHeader(h));
+            const defaultIdx = norm.findIndex(h => /matricul|ni|identif|dossier|numero/.test(h));
+            if (defaultIdx >= 0) select.value = String(defaultIdx);
+
+            mapDiv.style.display = 'block';
+
+            // when user changes selection, re-read selected column into accomNISet
+            select.addEventListener('change', async () => {
+                await buildAccomNISet(file, select.value === '' ? null : parseInt(select.value,10));
+            }, { once: false });
+
+            // build initial set
+            await buildAccomNISet(file, select.value === '' ? null : parseInt(select.value,10));
+        }
+
+        async function buildAccomNISet(file, colIdx) {
+            accomNISet = new Set();
+            if (!file || colIdx === null || typeof colIdx === 'undefined') return;
+            try {
+                if (file.name.toLowerCase().endsWith('.xlsx')) {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+                    // find the header row index used earlier
+                    let headerRowIndex = 0;
+                    for (let r = 0; r < Math.min(rows.length, 10); r++) {
+                        const row = (rows[r] || []).map(c => normalizeHeader(String(c || '')));
+                        if (row.some(c => /matricul|ni|identif|dossier|numero/.test(c))) { headerRowIndex = r; break; }
+                    }
+                    for (let r = headerRowIndex + 1; r < rows.length; r++) {
+                        const row = rows[r] || [];
+                        const v = row[colIdx];
+                        if (v !== undefined && v !== null && String(v).trim() !== '') accomNISet.add(String(v).trim());
+                    }
+                } else {
+                    const text = await file.text();
+                    const raw = text.split(/\r?\n/);
+                    if (raw.length) {
+                        const headerLine = raw[0];
+                        const sep = headerLine.includes(';') ? ';' : (headerLine.includes(',') ? ',' : ',');
+                        for (let i = 1; i < raw.length; i++) {
+                            const parts = raw[i].split(sep);
+                            const v = parts[colIdx];
+                            if (v !== undefined && v !== null && String(v).trim() !== '') accomNISet.add(String(v).trim());
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error('Erreur buildAccomNISet:', err);
+            }
         }
 
         function populateAllSelects(headers) {
