@@ -194,30 +194,31 @@
         <p class="subtitle">Possibilité de générer des listes de présence</p>
 
         <div class="upload-section">
-            <label for="csvFile">📊 Liste d'étudiants de BRIO</label>
-            <input type="file" id="csvFile" accept=".csv,.xlsx" required>
+            <label for="folderInput">📁 Sélectionner le dossier contenant tous les fichiers</label>
+            <input type="file" id="folderInput" webkitdirectory directory multiple>
+            <div style="font-size:12px;color:#666;margin-top:4px;">Le dossier doit contenir : <strong>BRIO.xlsx</strong>, <strong>examen.pdf</strong>, et optionnellement <strong>accommodements.xlsx</strong>, <strong>horscampus.xlsx</strong></div>
+            <div id="folderStatus" style="margin-top:10px;font-size:13px;color:#333;display:none;">
+                <div id="statusBrio" style="margin-bottom:4px;"></div>
+                <div id="statusAccom" style="margin-bottom:4px;"></div>
+                <div id="statusFilter" style="margin-bottom:4px;"></div>
+                <div id="statusPdf" style="margin-bottom:4px;"></div>
+            </div>
             <div id="detectionResult" style="margin-top:10px;font-size:13px;color:#333"></div>
         </div>
 
-        <div class="upload-section">
-            <label for="accomFile">🟪 Fichier d'accommodements (optionnel)</label>
-            <input type="file" id="accomFile" accept=".csv,.xlsx">
-            <div id="accomMap" style="margin-top:10px;font-size:13px;color:#333;display:none;">
-                <label for="accomNiSelect">Colonne contenant le numéro de dossier (NI)</label>
-                <select id="accomNiSelect"></select>
-            </div>
+        <!-- Hidden accom mapping UI (shown when accommodements.xlsx found) -->
+        <div id="accomMap" style="margin-top:10px;font-size:13px;color:#333;display:none;">
+            <label for="accomNiSelect">Colonne contenant le numéro de dossier (NI) — accommodements</label>
+            <select id="accomNiSelect"></select>
         </div>
 
-        <div class="upload-section">
-            <label for="filterFiles">🔍 Liste examen hors campus</label>
-            <input type="file" id="filterFiles" accept=".csv,.xlsx" multiple>
-            <div id="filterMap" style="margin-top:10px;font-size:13px;color:#333;display:none;">
-                <label for="filterNiSelect">Colonne NI (numéro dossier) dans les fichiers de liste</label>
-                <select id="filterNiSelect"></select>
-                <label for="filterTypeSelect" style="margin-top:6px;display:block;">Colonne TypeInscription (ligne 4 et suivantes)</label>
-                <select id="filterTypeSelect"></select>
-                <div id="filterResult" style="margin-top:8px;font-size:13px;color:#333;display:none;"></div>
-            </div>
+        <!-- Hidden filter mapping UI (shown when horscampus.xlsx found) -->
+        <div id="filterMap" style="margin-top:10px;font-size:13px;color:#333;display:none;">
+            <label for="filterNiSelect">Colonne NI (numéro dossier) dans le fichier hors campus</label>
+            <select id="filterNiSelect"></select>
+            <label for="filterTypeSelect" style="margin-top:6px;display:block;">Colonne TypeInscription (ligne 4 et suivantes)</label>
+            <select id="filterTypeSelect"></select>
+            <div id="filterResult" style="margin-top:8px;font-size:13px;color:#333;display:none;"></div>
         </div>
 
         <div class="upload-section" id="mappingUI" style="display:none;">
@@ -252,10 +253,7 @@
             <div style="font-size:12px;color:#666">Conseil : vérifiez et modifiez si nécessaire avant de générer.</div>
         </div>
 
-        <div class="upload-section">
-            <label for="pdfFile">📑 Modèle PDF de l'examen</label>
-            <input type="file" id="pdfFile" accept=".pdf" required>
-        </div>
+        <!-- pdfFile is now loaded from the folder -->
 
         <!-- attribution handled automatically by the single action button -->
 
@@ -403,13 +401,13 @@
         // ==================================================
 
         async function generatePDFs() {
-            const csvFile = document.getElementById('csvFile').files[0];
-            const pdfFile = document.getElementById('pdfFile').files[0];
+            const csvFile = folderBrioFile;
+            const pdfFile = folderPdfFile;
             const evalName = document.getElementById('evalName').value.trim();
             const courseName = document.getElementById('courseName').value.trim();
 
             if (!csvFile || !pdfFile) {
-                alert('⚠️ Veuillez sélectionner les deux fichiers (CSV/XLSX et PDF)');
+                alert('⚠️ Veuillez sélectionner un dossier contenant BRIO.xlsx et examen.pdf');
                 return;
             }
 
@@ -870,14 +868,13 @@
         let lastAssignmentWorkbookArray = null;
 
         async function generateAssignments() {
-            const fileInput = document.getElementById('csvFile');
-            const file = fileInput.files[0];
+            const file = folderBrioFile;
             if (!file) {
-                alert('⚠️ Veuillez sélectionner le fichier d\'inscription (XLSX) avant de générer.');
+                alert('⚠️ Veuillez sélectionner un dossier contenant BRIO.xlsx avant de générer.');
                 return;
             }
             if (!file.name.toLowerCase().endsWith('.xlsx')) {
-                alert('⚠️ Le fichier doit être au format .xlsx (inscription multi-feuilles).');
+                alert('⚠️ Le fichier BRIO doit être au format .xlsx.');
                 return;
             }
 
@@ -1044,13 +1041,13 @@
 
         // Single action: compute assignments in-memory then generate PDFs (and optional lists)
         async function generateAll() {
-            const csvFile = document.getElementById('csvFile').files[0];
-            const pdfFile = document.getElementById('pdfFile').files[0];
+            const csvFile = folderBrioFile;
+            const pdfFile = folderPdfFile;
             const evalName = document.getElementById('evalName').value.trim();
             const courseName = document.getElementById('courseName').value.trim();
 
             if (!csvFile || !pdfFile) {
-                alert('⚠️ Veuillez sélectionner les deux fichiers (inscription et PDF)');
+                alert('⚠️ Veuillez sélectionner un dossier contenant BRIO.xlsx et examen.pdf');
                 return;
             }
             if (!evalName || !courseName) {
@@ -1254,10 +1251,14 @@
         // Valeurs de Type conservées (normalisées). Par défaut on conserve 'campus ul'
         let filterKeepSet = new Set(['campus ul']);
 
+        // === Fichiers extraits du dossier ===
+        let folderBrioFile = null;   // BRIO.xlsx
+        let folderAccomFile = null;  // accommodements.xlsx
+        let folderFilterFile = null; // horscampus.xlsx
+        let folderPdfFile = null;    // examen.pdf
+
         // Safe DOM listener registration: check elements exist before binding to avoid hard errors
-        const csvEl = document.getElementById('csvFile'); if (csvEl) csvEl.addEventListener('change', onCsvFileSelected);
-        const accomEl = document.getElementById('accomFile'); if (accomEl) accomEl.addEventListener('change', onAccomFileSelected);
-        const filterEl = document.getElementById('filterFiles'); if (filterEl) filterEl.addEventListener('change', onFilterFilesSelected);
+        const folderEl = document.getElementById('folderInput'); if (folderEl) folderEl.addEventListener('change', onFolderSelected);
         const nameSeparateEl = document.getElementById('nameSeparate');
         if (nameSeparateEl) {
             // Forcer l'état coché par défaut au chargement
@@ -1279,8 +1280,55 @@
         ['nameCombinedSelect','firstNameSelect','lastNameSelect','niSelect','emailSelect']
             .forEach(id => { const el = document.getElementById(id); if (el) el.addEventListener('change', () => updateMappingFromUI()); });
 
+        async function onFolderSelected(e) {
+            const files = Array.from(e.target.files || []);
+            folderBrioFile = null;
+            folderAccomFile = null;
+            folderFilterFile = null;
+            folderPdfFile = null;
+
+            // Scan folder files by name (case-insensitive)
+            for (const f of files) {
+                const name = f.name.toLowerCase();
+                if (name === 'brio.xlsx') folderBrioFile = f;
+                else if (name === 'accommodements.xlsx') folderAccomFile = f;
+                else if (name === 'horscampus.xlsx') folderFilterFile = f;
+                else if (name === 'examen.pdf') folderPdfFile = f;
+            }
+
+            // Show status
+            const statusDiv = document.getElementById('folderStatus');
+            if (statusDiv) statusDiv.style.display = 'block';
+
+            const ok = (text) => `<span style="color:#28a745;">✅ ${text}</span>`;
+            const missing = (text) => `<span style="color:#dc3545;">❌ ${text}</span>`;
+            const optional = (text) => `<span style="color:#999;">⚪ ${text}</span>`;
+
+            const sBrio = document.getElementById('statusBrio');
+            const sAccom = document.getElementById('statusAccom');
+            const sFilter = document.getElementById('statusFilter');
+            const sPdf = document.getElementById('statusPdf');
+
+            if (sBrio) sBrio.innerHTML = folderBrioFile ? ok('BRIO.xlsx trouvé') : missing('BRIO.xlsx non trouvé (obligatoire)');
+            if (sAccom) sAccom.innerHTML = folderAccomFile ? ok('accommodements.xlsx trouvé') : optional('accommodements.xlsx non trouvé (optionnel)');
+            if (sFilter) sFilter.innerHTML = folderFilterFile ? ok('horscampus.xlsx trouvé') : optional('horscampus.xlsx non trouvé (optionnel)');
+            if (sPdf) sPdf.innerHTML = folderPdfFile ? ok('examen.pdf trouvé') : missing('examen.pdf non trouvé (obligatoire)');
+
+            // Trigger processing for each found file
+            if (folderBrioFile) {
+                // Simulate the csvFile change event
+                await onCsvFileSelected({ target: { files: [folderBrioFile] } });
+            }
+            if (folderAccomFile) {
+                await onAccomFileSelected({ target: { files: [folderAccomFile] } });
+            }
+            if (folderFilterFile) {
+                await onFilterFilesSelected({ target: { files: [folderFilterFile] } });
+            }
+        }
+
         async function onCsvFileSelected(e) {
-            const file = e.target.files[0];
+            const file = (e.target.files && e.target.files[0]) || null;
             if (!file) return;
             let headers = [];
             try {
@@ -1350,11 +1398,11 @@
                 if (mappingEl) {
                     try { mappingEl.style.display = 'block'; } catch(e) { console.warn('mappingEl show failed', e); }
                     try {
-                        // move mapping UI immediately after the csvFile upload section
-                        const csvInput = document.getElementById('csvFile');
-                        const csvSection = csvInput ? csvInput.closest('.upload-section') : null;
-                        if (csvSection && mappingEl && csvSection.parentNode) {
-                            csvSection.parentNode.insertBefore(mappingEl, csvSection.nextSibling);
+                        // move mapping UI immediately after the folder upload section
+                        const folderInput = document.getElementById('folderInput');
+                        const folderSection = folderInput ? folderInput.closest('.upload-section') : null;
+                        if (folderSection && mappingEl && folderSection.parentNode) {
+                            folderSection.parentNode.insertBefore(mappingEl, folderSection.nextSibling);
                         }
                     } catch (err) {
                         console.warn('Impossible de repositionner mappingUI:', err);
@@ -1453,7 +1501,7 @@
         }
 
         async function onAccomFileSelected(e) {
-            const file = e.target.files[0];
+            const file = (e.target.files && e.target.files[0]) || null;
             accomHeaders = [];
             accomNISet = null;
             const mapDiv = document.getElementById('accomMap');
@@ -1562,12 +1610,12 @@
             const files = Array.from(e.target.files || []);
             filterExcludeNISet = new Set();
             const filterMapDiv = document.getElementById('filterMap');
-            // Place the filter mapping UI right after the filterFiles input section
+            // Place the filter mapping UI in the folder upload section
             try {
-                const filterInput = document.getElementById('filterFiles');
-                const filterSection = filterInput ? filterInput.closest('.upload-section') : null;
-                if (filterSection && filterMapDiv) {
-                    filterSection.appendChild(filterMapDiv);
+                const folderInput = document.getElementById('folderInput');
+                const folderSection = folderInput ? folderInput.closest('.upload-section') : null;
+                if (folderSection && filterMapDiv) {
+                    folderSection.parentNode.insertBefore(filterMapDiv, folderSection.nextSibling.nextSibling || folderSection.nextSibling);
                 }
             } catch (err) {
                 console.warn('Impossible de repositionner filterMap:', err);
@@ -2219,40 +2267,36 @@
             return sanitizeFileName(base);
         }
 
-        // Permettre le glisser-déposer
-        ['csvFile', 'pdfFile'].forEach(id => {
-            const input = document.getElementById(id);
-            const parent = input.parentElement;
+        // Permettre le glisser-déposer sur le sélecteur de dossier
+        {
+            const input = document.getElementById('folderInput');
+            if (input) {
+                const parent = input.parentElement;
 
-            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-                parent.addEventListener(eventName, preventDefaults, false);
-            });
+                ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                    parent.addEventListener(eventName, preventDefaults, false);
+                });
 
-            function preventDefaults(e) {
-                e.preventDefault();
-                e.stopPropagation();
+                function preventDefaults(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+
+                ['dragenter', 'dragover'].forEach(eventName => {
+                    parent.addEventListener(eventName, () => {
+                        input.style.borderColor = '#764ba2';
+                        input.style.background = '#f0f1ff';
+                    }, false);
+                });
+
+                ['dragleave', 'drop'].forEach(eventName => {
+                    parent.addEventListener(eventName, () => {
+                        input.style.borderColor = '#667eea';
+                        input.style.background = '#f8f9ff';
+                    }, false);
+                });
             }
-
-            ['dragenter', 'dragover'].forEach(eventName => {
-                parent.addEventListener(eventName, () => {
-                    input.style.borderColor = '#764ba2';
-                    input.style.background = '#f0f1ff';
-                }, false);
-            });
-
-            ['dragleave', 'drop'].forEach(eventName => {
-                parent.addEventListener(eventName, () => {
-                    input.style.borderColor = '#667eea';
-                    input.style.background = '#f8f9ff';
-                }, false);
-            });
-
-            parent.addEventListener('drop', (e) => {
-                const dt = e.dataTransfer;
-                const files = dt.files;
-                input.files = files;
-            }, false);
-        });
+        }
 
         // Robust click wrapper for the generate button to surface errors
         const generateBtnEl = document.getElementById('generateBtn');
