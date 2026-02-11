@@ -186,6 +186,75 @@
         .hidden {
             display: none;
         }
+
+        .info-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            color: white;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-left: 6px;
+            vertical-align: middle;
+            position: relative;
+            user-select: none;
+            line-height: 1;
+        }
+
+        .info-icon:hover {
+            background: #764ba2;
+        }
+
+        .info-bubble {
+            display: none;
+            position: absolute;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+            padding: 14px 16px;
+            font-size: 13px;
+            font-weight: 400;
+            color: #333;
+            line-height: 1.5;
+            z-index: 100;
+            text-align: left;
+        }
+
+        .info-bubble::before {
+            content: '';
+            position: absolute;
+            top: -7px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-left: 7px solid transparent;
+            border-right: 7px solid transparent;
+            border-bottom: 7px solid #ccc;
+        }
+
+        .info-bubble::after {
+            content: '';
+            position: absolute;
+            top: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-bottom: 6px solid #fff;
+        }
+
+        .info-bubble.show {
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -201,9 +270,14 @@
             <input type="text" id="courseName" placeholder="Ex: STT-1900">
         </div>
         <div class="upload-section">
-            <label for="folderInput">📁 Sélectionner le dossier contenant tous les fichiers</label>
+            <label for="folderInput" style="display:inline;">📁 Sélectionner le dossier contenant tous les fichiers</label>
+            <span class="info-icon" id="folderInfoIcon" title="Informations">i
+                <span class="info-bubble" id="folderInfoBubble">Le dossier sélectionné doit contenir les fichiers suivants 
+                    :<br><br><strong>BRIO.xlsx</strong> — liste d'étudiants exportée de BRIO (obligatoire)
+                    <br><strong>examen.pdf</strong> — modèle PDF de l'examen selon le .cls créé par Jérôme Soucy ou Julien Miron (obligatoire)
+                    <br><strong>accommodements.xlsx</strong> — liste des accommodements fournie par l'agente de secrétariat (optionnel)
+                    <br><strong>horscampus.xlsx</strong> — liste examen hors campus qui se trouve sur le site du SSE (optionnel)</span></span>
             <input type="file" id="folderInput" webkitdirectory directory multiple>
-            <div style="font-size:12px;color:#666;margin-top:4px;">Le dossier doit contenir : <strong>BRIO.xlsx</strong>, <strong>examen.pdf</strong>, et optionnellement <strong>accommodements.xlsx</strong>, <strong>horscampus.xlsx</strong></div>
             <div id="folderStatus" style="margin-top:10px;font-size:13px;color:#333;display:none;">
                 <div id="statusBrio" style="margin-bottom:4px;"></div>
                 <div id="statusAccom" style="margin-bottom:4px;"></div>
@@ -267,14 +341,16 @@
         <div id="roomsUI" style="margin-bottom:16px;">
             <label>🏷️ Choisir les locaux à utiliser</label>
                         <div style="margin-top:10px;">
-                <label style="font-size:13px;font-weight:600;margin-bottom:6px;display:block;">Mode de répartition :</label>
+                <label style="font-size:13px;font-weight:600;margin-bottom:6px;display:block;">Mode de répartition : <span class="info-icon" id="repartitionInfoIcon" title="Informations">i
+                <span class="info-bubble" id="repartitionInfoBubble">Gros→Petit : remplit les plus gros locaux en premier. <br>
+                    Petit→Gros : remplit les plus petits en premier. <br>
+                    Uniforme : répartit les étudiants proportionnellement dans tous les locaux.</span></span></label>
                 <div style="display:flex;gap:12px;flex-wrap:wrap;">
                     <label style="font-size:13px;cursor:pointer;"><input type="radio" name="distMode" value="large-first" checked> Gros → Petit</label>
                     <label style="font-size:13px;cursor:pointer;"><input type="radio" name="distMode" value="small-first"> Petit → Gros</label>
                     <label style="font-size:13px;cursor:pointer;"><input type="radio" name="distMode" value="uniform"> Uniforme</label>
                 </div>
-                <div style="font-size:11px;color:#888;margin-top:4px;">Gros→Petit : remplit les plus gros locaux en premier. Petit→Gros : remplit les plus petits en premier. Uniforme : répartit les étudiants proportionnellement dans tous les locaux.</div>
-            </div>
+
             <div id="roomList" style="margin-top:8px;">
                 <div class="roomRow" style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
                     <input type="checkbox" class="roomCheckbox" data-name="VCH-2850" id="room_VCH-2850" checked>
@@ -353,6 +429,18 @@
             <div id="accomRoomList" style="margin-top:8px;">
                 <div class="accomRoomRow" style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
                     <input type="checkbox" class="accomRoomCheckbox" id="accom_room_1">
+                    <input type="text" class="accomRoomName" placeholder="Nom de la salle" style="width:140px;padding:3px 6px;border:1px solid #ccc;border-radius:4px;">
+                    <input type="number" class="accomRoomCapacity" value="" min="1" placeholder="Capacité" style="width:100px;">
+                    <div style="font-size:12px;color:#666;">places</div>
+                </div>
+                <div class="accomRoomRow" style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                    <input type="checkbox" class="accomRoomCheckbox" id="accom_room_2">
+                    <input type="text" class="accomRoomName" placeholder="Nom de la salle" style="width:140px;padding:3px 6px;border:1px solid #ccc;border-radius:4px;">
+                    <input type="number" class="accomRoomCapacity" value="" min="1" placeholder="Capacité" style="width:100px;">
+                    <div style="font-size:12px;color:#666;">places</div>
+                </div>
+                <div class="accomRoomRow" style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                    <input type="checkbox" class="accomRoomCheckbox" id="accom_room_2">
                     <input type="text" class="accomRoomName" placeholder="Nom de la salle" style="width:140px;padding:3px 6px;border:1px solid #ccc;border-radius:4px;">
                     <input type="number" class="accomRoomCapacity" value="" min="1" placeholder="Capacité" style="width:100px;">
                     <div style="font-size:12px;color:#666;">places</div>
@@ -1343,6 +1431,39 @@
 
         // Safe DOM listener registration: check elements exist before binding to avoid hard errors
         const folderEl = document.getElementById('folderInput'); if (folderEl) folderEl.addEventListener('change', onFolderSelected);
+
+        // Info bubble toggle — folder
+        const infoIcon = document.getElementById('folderInfoIcon');
+        const infoBubble = document.getElementById('folderInfoBubble');
+        if (infoIcon && infoBubble) {
+            infoIcon.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                infoBubble.classList.toggle('show');
+            });
+            document.addEventListener('click', (e) => {
+                if (!infoIcon.contains(e.target)) {
+                    infoBubble.classList.remove('show');
+                }
+            });
+        }
+
+        // Info bubble toggle — répartition des locaux
+        const repartInfoIcon = document.getElementById('repartitionInfoIcon');
+        const repartInfoBubble = document.getElementById('repartitionInfoBubble');
+        if (repartInfoIcon && repartInfoBubble) {
+            repartInfoIcon.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                repartInfoBubble.classList.toggle('show');
+            });
+            document.addEventListener('click', (e) => {
+                if (!repartInfoIcon.contains(e.target)) {
+                    repartInfoBubble.classList.remove('show');
+                }
+            });
+        }
+
         const nameSeparateEl = document.getElementById('nameSeparate');
         if (nameSeparateEl) {
             // Forcer l'état coché par défaut au chargement
