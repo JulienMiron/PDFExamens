@@ -192,7 +192,14 @@
     <div class="container">
         <h1>📄 Générateur d'examens avec nom, matricule et numéro de table</h1>
         <p class="subtitle">Possibilité de générer des listes de présence</p>
-
+        <div class="upload-section">
+            <label for="evalName">📝 Nom de l'évaluation (obligatoire)</label>
+            <input type="text" id="evalName" placeholder="Ex: Examen 1">
+        </div>
+        <div class="upload-section">
+            <label for="courseName">📚 Numéro du cours (obligatoire)</label>
+            <input type="text" id="courseName" placeholder="Ex: STT-1900">
+        </div>
         <div class="upload-section">
             <label for="folderInput">📁 Sélectionner le dossier contenant tous les fichiers</label>
             <input type="file" id="folderInput" webkitdirectory directory multiple>
@@ -259,23 +266,44 @@
 
         <div id="roomsUI" style="margin-bottom:16px;">
             <label>🏷️ Choisir les locaux à utiliser</label>
+                        <div style="margin-top:10px;">
+                <label style="font-size:13px;font-weight:600;margin-bottom:6px;display:block;">Mode de répartition :</label>
+                <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                    <label style="font-size:13px;cursor:pointer;"><input type="radio" name="distMode" value="large-first" checked> Gros → Petit</label>
+                    <label style="font-size:13px;cursor:pointer;"><input type="radio" name="distMode" value="small-first"> Petit → Gros</label>
+                    <label style="font-size:13px;cursor:pointer;"><input type="radio" name="distMode" value="uniform"> Uniforme</label>
+                </div>
+                <div style="font-size:11px;color:#888;margin-top:4px;">Gros→Petit : remplit les plus gros locaux en premier. Petit→Gros : remplit les plus petits en premier. Uniforme : répartit les étudiants proportionnellement dans tous les locaux.</div>
+            </div>
             <div id="roomList" style="margin-top:8px;">
                 <div class="roomRow" style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
                     <input type="checkbox" class="roomCheckbox" data-name="VCH-2850" id="room_VCH-2850" checked>
-                    <label for="room_VCH-2850" style="margin:0;font-weight:600;">VCH-2850</label>
+                    <label for="room_VCH-2850" style="margin:0;font-weight:600;">VCH-2850 (201 places)</label>
                     <input type="number" class="roomCapacity" data-name="VCH-2850" value="201" min="1" style="width:100px;margin-left:8px;">
                     <div style="font-size:12px;color:#666;margin-left:8px;">places</div>
                 </div>
                 <div class="roomRow" style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
                     <input type="checkbox" class="roomCheckbox" data-name="VCH-2880" id="room_VCH-2880" checked>
-                    <label for="room_VCH-2880" style="margin:0;font-weight:600;">VCH-2880</label>
+                    <label for="room_VCH-2880" style="margin:0;font-weight:600;">VCH-2880 (110 places)</label>
                     <input type="number" class="roomCapacity" data-name="VCH-2880" value="110" min="1" style="width:100px;margin-left:8px;">
                     <div style="font-size:12px;color:#666;margin-left:8px;">places</div>
                 </div>
                 <div class="roomRow" style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                    <input type="checkbox" class="roomCheckbox" data-name="VCH-3860" id="room_VCH-3860" >
+                    <label for="room_VCH-3860" style="margin:0;font-weight:600;">VCH-3860 (80 places)</label>
+                    <input type="number" class="roomCapacity" data-name="VCH-3860" value="80" min="1" style="width:100px;margin-left:8px;">
+                    <div style="font-size:12px;color:#666;margin-left:8px;">places</div>
+                </div>
+                <div class="roomRow" style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
                     <input type="checkbox" class="roomCheckbox" data-name="VCH-3880" id="room_VCH-3880">
-                    <label for="room_VCH-3880" style="margin:0;font-weight:600;">VCH-3880</label>
+                    <label for="room_VCH-3880" style="margin:0;font-weight:600;">VCH-3880 (110 places)</label>
                     <input type="number" class="roomCapacity" data-name="VCH-3880" value="110" min="1" style="width:100px;margin-left:8px;">
+                    <div style="font-size:12px;color:#666;margin-left:8px;">places</div>
+                </div>
+                <div class="roomRow" style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                    <input type="checkbox" class="roomCheckbox" data-name="PLT-1112" id="room_PLT-1112">
+                    <label for="room_PLT-1112" style="margin:0;font-weight:600;">PLT-1112 (252 places)</label>
+                    <input type="number" class="roomCapacity" data-name="PLT-1112" value="252" min="1" style="width:100px;margin-left:8px;">
                     <div style="font-size:12px;color:#666;margin-left:8px;">places</div>
                 </div>
                 <div style="border-top:1px solid #ddd;margin:10px 0 6px;padding-top:8px;font-size:13px;color:#555;font-weight:600;">Salles supplémentaires</div>
@@ -317,6 +345,7 @@
                 </div>
             </div>
             <div style="font-size:12px;color:#666">Cochez les locaux à utiliser et modifiez la capacité si besoin.</div>
+
         </div>
 
         <div id="accomRoomsUI" style="margin-bottom:16px;">
@@ -351,14 +380,7 @@
             </div>
         </div>
 
-        <div class="upload-section">
-            <label for="evalName">📝 Nom de l'évaluation (obligatoire)</label>
-            <input type="text" id="evalName" placeholder="Ex: Examen 1">
-        </div>
-        <div class="upload-section">
-            <label for="courseName">📚 Numéro du cours (obligatoire)</label>
-            <input type="text" id="courseName" placeholder="Ex: STT-1500">
-        </div>
+
 
         <button id="generateBtn" onclick="generateAll()">
             🚀 Générer et Télécharger le ZIP
@@ -1006,9 +1028,71 @@
             }
         }
 
+        function getDistributionMode() {
+            const el = document.querySelector('input[name="distMode"]:checked');
+            return el ? el.value : 'large-first';
+        }
+
         function assignSeatsToRooms(students, rooms) {
-            // rooms : [{name,capacity}] - fill largest to smallest
-            const sortedRooms = [...rooms].sort((a,b)=>b.capacity - a.capacity);
+            const mode = getDistributionMode();
+
+            if (mode === 'uniform') {
+                // Répartition uniforme : proportionnelle à la capacité de chaque salle
+                const totalCapacity = rooms.reduce((sum, r) => sum + r.capacity, 0);
+                const totalStudents = students.length;
+                // Calculer le nombre d'étudiants par salle (proportionnel)
+                const roomAllocs = rooms.map(r => ({
+                    name: r.name,
+                    capacity: r.capacity,
+                    count: 0
+                }));
+                let allocated = 0;
+                for (let i = 0; i < roomAllocs.length; i++) {
+                    if (i === roomAllocs.length - 1) {
+                        // Dernière salle : prend le reste
+                        roomAllocs[i].count = Math.min(totalStudents - allocated, roomAllocs[i].capacity);
+                    } else {
+                        const share = Math.round((roomAllocs[i].capacity / totalCapacity) * totalStudents);
+                        roomAllocs[i].count = Math.min(share, roomAllocs[i].capacity);
+                    }
+                    allocated += roomAllocs[i].count;
+                }
+                // Ajuster si on a trop ou pas assez alloué (arrondi)
+                let diff = totalStudents - allocated;
+                if (diff > 0) {
+                    for (let i = 0; i < roomAllocs.length && diff > 0; i++) {
+                        const canAdd = roomAllocs[i].capacity - roomAllocs[i].count;
+                        const add = Math.min(canAdd, diff);
+                        roomAllocs[i].count += add;
+                        diff -= add;
+                    }
+                } else if (diff < 0) {
+                    for (let i = roomAllocs.length - 1; i >= 0 && diff < 0; i--) {
+                        const canRemove = roomAllocs[i].count;
+                        const remove = Math.min(canRemove, -diff);
+                        roomAllocs[i].count -= remove;
+                        diff += remove;
+                    }
+                }
+                const assigned = [];
+                let studentIndex = 0;
+                for (const alloc of roomAllocs) {
+                    for (let seat = 1; seat <= alloc.count && studentIndex < students.length; seat++) {
+                        const s = students[studentIndex++];
+                        assigned.push({ ...s, local: alloc.name, place: String(seat) });
+                    }
+                }
+                while (studentIndex < students.length) {
+                    assigned.push({ ...students[studentIndex++], local: '', place: '' });
+                }
+                return assigned;
+            }
+
+            // Modes séquentiels : gros→petit ou petit→gros
+            const sortedRooms = (mode === 'small-first')
+                ? [...rooms].sort((a, b) => a.capacity - b.capacity)
+                : [...rooms].sort((a, b) => b.capacity - a.capacity);
+
             const assigned = [];
             let studentIndex = 0;
             for (const room of sortedRooms) {
