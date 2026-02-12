@@ -467,12 +467,19 @@
 
             </div>
         </div>
-
+        <div style="margin-top:12px;display:flex;gap:8px;align-items:center;">
+            <label for="blankPercent" style="font-size:13px;font-weight:600;">Nombre de copies vierges en pourcentage <br> 
+                du nombre total d'étudiants</label>
+            <input type="number" id="blankPercent" value="2.5" min="0" max="100" step="0.1" style="width:100px;padding:8px;border:2px solid #667eea;border-radius:8px;background:#f8f9ff;text-align:right;">
+            <label > %</label>
+        </div>
 
 
         <button id="generateBtn" onclick="generateAll()">
             🚀 Générer et Télécharger le ZIP
         </button>
+
+
 
         <div class="progress" id="progress">
             <div class="progress-bar">
@@ -768,6 +775,25 @@
                     }
                     // yield to the event loop every 10 students so the browser can update UI
                     if (i % 10 === 0) await new Promise(r => setTimeout(r, 0));
+                }
+
+                // Générer des copies vierges (2.5% du nombre de PDF générés)
+                try {
+                    let blankPercent = 0;
+                    try {
+                        blankPercent = parseFloat(document.getElementById('blankPercent').value);
+                    } catch (e) { blankPercent = 0; }
+                    if (isNaN(blankPercent) || !isFinite(blankPercent) || blankPercent < 0) blankPercent = 0;
+                    const blankCount = Math.ceil(students.length * (blankPercent / 100)) || 0;
+                    if (blankCount > 0) {
+                        for (let bi = 0; bi < blankCount; bi++) {
+                            const idx = String(bi + 1).padStart(3, '0');
+                            // Use the exam PDF template for blank copies
+                            zip.file(`4000_copie_vierge_${idx}.pdf`, pdfBytes);
+                        }
+                    }
+                } catch (errBlank) {
+                    console.error('Erreur génération copies vierges:', errBlank);
                 }
 
                 // Générer les listes de présence automatiquement
@@ -1066,7 +1092,7 @@
                     return la.localeCompare(lb, 'fr', { sensitivity: 'base' });
                 });
 
-                const assignedRegular = assignSeatsToRooms(remaining, roomsToUse);
+                const assignedRegular = assignSeatsToRooms(remaining, roomsToUse, 1);
                 // Attribuer les accommodements à leurs salles si disponibles, sinon garder ACCOMMODEMENT/X
                 const accomRoomsToUse = getSelectedAccomRooms();
                 let finalAccomList;
@@ -1076,7 +1102,14 @@
                         const getLast = s => (s.last && String(s.last).trim()) || (s.name ? String(s.name).trim().split(/\s+/).slice(-1)[0] : '');
                         return getLast(a).toString().localeCompare(getLast(b).toString(), 'fr', { sensitivity: 'base' });
                     });
-                    finalAccomList = assignSeatsToRooms(accomList, accomRoomsToUse);
+                    // Start accom numbering after the max place used in assignedRegular
+                    let maxPlace = 0;
+                    for (const ar of assignedRegular) {
+                        const n = parseInt(ar.place, 10);
+                        if (!isNaN(n) && isFinite(n)) maxPlace = Math.max(maxPlace, n);
+                    }
+                    const startForAccom = maxPlace > 0 ? maxPlace + 1 : 1;
+                    finalAccomList = assignSeatsToRooms(accomList, accomRoomsToUse, startForAccom);
                 } else {
                     finalAccomList = accomList;
                 }
@@ -1121,7 +1154,7 @@
             return el ? el.value : 'large-first';
         }
 
-        function assignSeatsToRooms(students, rooms) {
+        function assignSeatsToRooms(students, rooms, startFrom = 1) {
             const mode = getDistributionMode();
 
             if (mode === 'uniform') {
@@ -1164,10 +1197,11 @@
                 }
                 const assigned = [];
                 let studentIndex = 0;
+                let globalSeat = Number(startFrom) || 1;
                 for (const alloc of roomAllocs) {
                     for (let seat = 1; seat <= alloc.count && studentIndex < students.length; seat++) {
                         const s = students[studentIndex++];
-                        assigned.push({ ...s, local: alloc.name, place: String(seat) });
+                        assigned.push({ ...s, local: alloc.name, place: String(globalSeat++) });
                     }
                 }
                 while (studentIndex < students.length) {
@@ -1183,10 +1217,11 @@
 
             const assigned = [];
             let studentIndex = 0;
+            let globalSeat = Number(startFrom) || 1;
             for (const room of sortedRooms) {
                 for (let seat = 1; seat <= room.capacity && studentIndex < students.length; seat++) {
                     const s = students[studentIndex++];
-                    assigned.push({ ...s, local: room.name, place: String(seat) });
+                    assigned.push({ ...s, local: room.name, place: String(globalSeat++) });
                 }
                 if (studentIndex >= students.length) break;
             }
@@ -1316,7 +1351,7 @@
                     return la.localeCompare(lb, 'fr', { sensitivity: 'base' });
                 });
 
-                const assignedRegular = assignSeatsToRooms(remaining, roomsToUse);
+                const assignedRegular = assignSeatsToRooms(remaining, roomsToUse, 1);
                 console.log('generateAll: assignedRegular count=', assignedRegular.length);
                 // Attribuer les accommodements à leurs salles si disponibles
                 const accomRoomsToUse = getSelectedAccomRooms();
@@ -1326,7 +1361,13 @@
                         const getLast = s => (s.last && String(s.last).trim()) || (s.name ? String(s.name).trim().split(/\s+/).slice(-1)[0] : '');
                         return getLast(a).toString().localeCompare(getLast(b).toString(), 'fr', { sensitivity: 'base' });
                     });
-                    finalAccomList = assignSeatsToRooms(accomList, accomRoomsToUse);
+                    let maxPlace = 0;
+                    for (const ar of assignedRegular) {
+                        const n = parseInt(ar.place, 10);
+                        if (!isNaN(n) && isFinite(n)) maxPlace = Math.max(maxPlace, n);
+                    }
+                    const startForAccom = maxPlace > 0 ? maxPlace + 1 : 1;
+                    finalAccomList = assignSeatsToRooms(accomList, accomRoomsToUse, startForAccom);
                 } else {
                     finalAccomList = accomList;
                 }
