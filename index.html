@@ -29,7 +29,7 @@
             border-radius: 20px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             padding: 40px;
-            max-width: 600px;
+            max-width: 900px;
             width: 100%;
         }
 
@@ -260,7 +260,6 @@
 <body>
     <div class="container">
         <h1>📄 Générateur d'examens avec nom, matricule et numéro de table</h1>
-        <p class="subtitle">Possibilité de générer des listes de présence</p>
         <div class="upload-section">
             <label for="evalName">📝 Nom de l'évaluation (obligatoire)</label>
             <input type="text" id="evalName" placeholder="Ex: Examen 1">
@@ -351,38 +350,46 @@
                     <label style="font-size:13px;cursor:pointer;"><input type="radio" name="distMode" value="uniform"> Uniforme</label>
                 </div>
 
-            <div id="roomList" style="margin-top:8px;">
+            <div id="roomList" style="margin-top:8px;display:flex;gap:24px;align-items:flex-start;">
+                <!-- Colonne gauche : salles prédéfinies -->
+                 
+                <div style="flex:1;">
+                <div style="font-size:13px;color:#555;font-weight:600;margin-bottom:8px;">Salles prédéfinies</div>
+                
                 <div class="roomRow" style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
                     <input type="checkbox" class="roomCheckbox" data-name="VCH-2850" id="room_VCH-2850" checked>
-                    <label for="room_VCH-2850" style="margin:0;font-weight:600;">VCH-2850 (201 places)</label>
+                    <label for="room_VCH-2850" style="margin:0;font-weight:600;min-width:180px;">VCH-2850 (201 places)</label>
                     <input type="number" class="roomCapacity" data-name="VCH-2850" value="201" min="1" style="width:100px;margin-left:8px;">
                     <div style="font-size:12px;color:#666;margin-left:8px;">places</div>
                 </div>
                 <div class="roomRow" style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
                     <input type="checkbox" class="roomCheckbox" data-name="VCH-2880" id="room_VCH-2880" checked>
-                    <label for="room_VCH-2880" style="margin:0;font-weight:600;">VCH-2880 (110 places)</label>
+                    <label for="room_VCH-2880" style="margin:0;font-weight:600;min-width:180px;">VCH-2880 (110 places)</label>
                     <input type="number" class="roomCapacity" data-name="VCH-2880" value="110" min="1" style="width:100px;margin-left:8px;">
                     <div style="font-size:12px;color:#666;margin-left:8px;">places</div>
                 </div>
                 <div class="roomRow" style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
                     <input type="checkbox" class="roomCheckbox" data-name="VCH-3860" id="room_VCH-3860" >
-                    <label for="room_VCH-3860" style="margin:0;font-weight:600;">VCH-3860 (80 places)</label>
+                    <label for="room_VCH-3860" style="margin:0;font-weight:600;min-width:180px;">VCH-3860 (80 places)</label>
                     <input type="number" class="roomCapacity" data-name="VCH-3860" value="80" min="1" style="width:100px;margin-left:8px;">
                     <div style="font-size:12px;color:#666;margin-left:8px;">places</div>
                 </div>
                 <div class="roomRow" style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
                     <input type="checkbox" class="roomCheckbox" data-name="VCH-3880" id="room_VCH-3880">
-                    <label for="room_VCH-3880" style="margin:0;font-weight:600;">VCH-3880 (110 places)</label>
+                    <label for="room_VCH-3880" style="margin:0;font-weight:600;min-width:180px;">VCH-3880 (110 places)</label>
                     <input type="number" class="roomCapacity" data-name="VCH-3880" value="110" min="1" style="width:100px;margin-left:8px;">
                     <div style="font-size:12px;color:#666;margin-left:8px;">places</div>
                 </div>
                 <div class="roomRow" style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
                     <input type="checkbox" class="roomCheckbox" data-name="PLT-1112" id="room_PLT-1112">
-                    <label for="room_PLT-1112" style="margin:0;font-weight:600;">PLT-1112 (252 places)</label>
-                    <input type="number" class="roomCapacity" data-name="PLT-1112" value="252" min="1" style="width:100px;margin-left:8px;">
+                    <label for="room_PLT-1112" style="margin:0;font-weight:600;min-width:180px;">PLT-1112 (249 places)</label>
+                    <input type="number" class="roomCapacity" data-name="PLT-1112" value="249" min="1" style="width:100px;margin-left:8px;">
                     <div style="font-size:12px;color:#666;margin-left:8px;">places</div>
                 </div>
-                <div style="border-top:1px solid #ddd;margin:10px 0 6px;padding-top:8px;font-size:13px;color:#555;font-weight:600;">Salles supplémentaires</div>
+                </div>
+                <!-- Colonne droite : salles supplémentaires -->
+                <div style="flex:1;border-left:1px solid #ddd;padding-left:20px;">
+                <div style="font-size:13px;color:#555;font-weight:600;margin-bottom:8px;">Salles supplémentaires</div>
                 <div class="roomRow" style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
                     <input type="checkbox" class="roomCheckbox customRoomCheckbox" id="room_custom_1">
                     <input type="text" class="customRoomName" placeholder="Nom de la salle" style="width:140px;padding:3px 6px;border:1px solid #ccc;border-radius:4px;">
@@ -418,6 +425,7 @@
                     <input type="text" class="customRoomName" placeholder="Nom de la salle" style="width:140px;padding:3px 6px;border:1px solid #ccc;border-radius:4px;">
                     <input type="number" class="roomCapacity customRoomCapacity" value="" min="1" placeholder="Capacité" style="width:100px;">
                     <div style="font-size:12px;color:#666;">places</div>
+                </div>
                 </div>
             </div>
             <div style="font-size:12px;color:#666">Cochez les locaux à utiliser et modifiez la capacité si besoin.</div>
