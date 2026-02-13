@@ -276,7 +276,8 @@
                     <br><strong>examen.pdf</strong> — modèle PDF de l'examen selon le .cls créé par Jérôme Soucy ou Julien Miron (obligatoire)
                     <br><strong>accommodements.xlsx</strong> — liste des accommodements fournie par l'agente de secrétariat (optionnel)
                     <br><strong>horscampus.xlsx</strong> — liste examen hors campus qui se trouve sur le site du SSE (optionnel)</span></span>
-            <input type="file" id="folderInput" webkitdirectory directory multiple>
+            <label for="folderInput" id="folderSelectBtn" style="display:block;width:100%;padding:12px;border:2px dashed #667eea;border-radius:10px;background:#f8f9ff;cursor:pointer;transition:all 0.3s ease;text-align:left;color:#888;font-size:14px;">Cliquer pour sélectionner un dossier...</label>
+            <input type="file" id="folderInput" webkitdirectory directory multiple style="position:absolute;width:0;height:0;opacity:0;overflow:hidden;pointer-events:none;">
             <div id="folderStatus" style="margin-top:10px;font-size:13px;color:#333;display:none;">
                 <div id="statusBrio" style="margin-bottom:4px;"></div>
                 <div id="statusAccom" style="margin-bottom:4px;"></div>
@@ -905,31 +906,59 @@
                 progressFill.style.width = '100%';
                 progressText.textContent = '✅ Téléchargement du ZIP...';
 
-                // Télécharger le ZIP — créer un lien invisible, l'ajouter au DOM, cliquer, puis nettoyer
-                try {
-                    const url = URL.createObjectURL(zipBlob);
-                    const link = document.createElement('a');
-                    link.style.display = 'none';
-                    link.href = url;
-                    link.download = 'examens_personnalises.zip';
-                    document.body.appendChild(link);
-                    console.log('Téléchargement ZIP: déclenchement du click sur le lien');
-                    link.click();
-                    // cleanup
-                    setTimeout(() => {
-                        try { document.body.removeChild(link); } catch (e) {}
-                        try { URL.revokeObjectURL(url); } catch (e) {}
-                    }, 5000);
-                } catch (err) {
-                    console.error('Erreur lors du déclenchement du téléchargement du ZIP:', err);
-                    // as a fallback, open the blob URL in a new tab so the user can download manually
+                // Télécharger le ZIP — écrire dans le dossier sélectionné si possible, sinon téléchargement classique
+                if (folderDirectoryHandle) {
                     try {
-                        const fallbackUrl = URL.createObjectURL(zipBlob);
-                        window.open(fallbackUrl, '_blank');
-                        setTimeout(() => { try { URL.revokeObjectURL(fallbackUrl); } catch (e) {} }, 10000);
-                    } catch (e2) {
-                        console.error('Fallback téléchargement échoué:', e2);
-                        alert('Le téléchargement automatique a échoué. Vérifiez la console pour plus de détails.');
+                        const fileHandle = await folderDirectoryHandle.getFileHandle('examens_personnalises.zip', { create: true });
+                        const writable = await fileHandle.createWritable();
+                        await writable.write(zipBlob);
+                        await writable.close();
+                        console.log('ZIP enregistré directement dans le dossier sélectionné');
+                    } catch (errFs) {
+                        console.error('Erreur écriture dans le dossier:', errFs);
+                        // Fallback au téléchargement classique
+                        try {
+                            const url = URL.createObjectURL(zipBlob);
+                            const link = document.createElement('a');
+                            link.style.display = 'none';
+                            link.href = url;
+                            link.download = 'examens_personnalises.zip';
+                            document.body.appendChild(link);
+                            link.click();
+                            setTimeout(() => {
+                                try { document.body.removeChild(link); } catch (e) {}
+                                try { URL.revokeObjectURL(url); } catch (e) {}
+                            }, 5000);
+                        } catch (e2) {
+                            console.error('Fallback téléchargement échoué:', e2);
+                            alert('Le téléchargement automatique a échoué. Vérifiez la console pour plus de détails.');
+                        }
+                    }
+                } else {
+                    try {
+                        const url = URL.createObjectURL(zipBlob);
+                        const link = document.createElement('a');
+                        link.style.display = 'none';
+                        link.href = url;
+                        link.download = 'examens_personnalises.zip';
+                        document.body.appendChild(link);
+                        console.log('Téléchargement ZIP: déclenchement du click sur le lien');
+                        link.click();
+                        // cleanup
+                        setTimeout(() => {
+                            try { document.body.removeChild(link); } catch (e) {}
+                            try { URL.revokeObjectURL(url); } catch (e) {}
+                        }, 5000);
+                    } catch (err) {
+                        console.error('Erreur lors du déclenchement du téléchargement du ZIP:', err);
+                        try {
+                            const fallbackUrl = URL.createObjectURL(zipBlob);
+                            window.open(fallbackUrl, '_blank');
+                            setTimeout(() => { try { URL.revokeObjectURL(fallbackUrl); } catch (e) {} }, 10000);
+                        } catch (e2) {
+                            console.error('Fallback téléchargement échoué:', e2);
+                            alert('Le téléchargement automatique a échoué. Vérifiez la console pour plus de détails.');
+                        }
                     }
                 }
 
@@ -937,7 +966,8 @@
                 setTimeout(() => {
                     progressDiv.style.display = 'none';
                     progressFill.style.width = '0%';
-                    alert(`✅ Succès ! ${students.length} PDFs ont été générés et téléchargés dans le ZIP.`);
+                    const destMsg = folderDirectoryHandle ? ` dans le dossier « ${folderDirectoryHandle.name} »` : '';
+                    alert(`✅ Succès ! ${students.length} PDFs ont été générés et téléchargés dans le ZIP${destMsg}.`);
                     generateBtn.disabled = false;
                 }, 1000);
 
@@ -1477,9 +1507,62 @@
         let folderAccomFile = null;  // accommodements.xlsx
         let folderFilterFile = null; // horscampus.xlsx
         let folderPdfFile = null;    // examen.pdf
+        let folderDirectoryHandle = null; // FileSystemDirectoryHandle for writing back
 
         // Safe DOM listener registration: check elements exist before binding to avoid hard errors
-        const folderEl = document.getElementById('folderInput'); if (folderEl) folderEl.addEventListener('change', onFolderSelected);
+        const folderEl = document.getElementById('folderInput');
+        // Flag to avoid double-firing onFolderSelected when the hidden input is used as fallback
+        let folderHandledByPicker = false;
+
+        // Button that uses showDirectoryPicker (read+write) when available, otherwise the label naturally triggers the hidden input
+        const folderSelectBtn = document.getElementById('folderSelectBtn');
+        if (folderSelectBtn && window.showDirectoryPicker) {
+            // When showDirectoryPicker is available, intercept the label click
+            folderSelectBtn.addEventListener('click', async (e) => {
+                e.preventDefault(); // prevent the label from triggering the file input
+                try {
+                    folderDirectoryHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+                    // Read files from directory handle
+                    const files = [];
+                    for await (const entry of folderDirectoryHandle.values()) {
+                        if (entry.kind === 'file') {
+                            const file = await entry.getFile();
+                            files.push(file);
+                        }
+                    }
+                    // Update label text with folder name
+                    folderSelectBtn.textContent = '📂 ' + folderDirectoryHandle.name;
+                    folderSelectBtn.style.color = '#333';
+                    // Feed files to the existing handler
+                    folderHandledByPicker = true;
+                    await onFolderSelected({ target: { files } });
+                } catch (err) {
+                    if (err.name === 'AbortError') return; // user cancelled
+                    console.warn('showDirectoryPicker failed, falling back to file input:', err);
+                    folderDirectoryHandle = null;
+                    folderHandledByPicker = false;
+                    // Trigger the native file input as fallback
+                    if (folderEl) folderEl.click();
+                }
+            });
+        }
+
+        // Listen on the hidden file input (used as fallback or by browsers without showDirectoryPicker)
+        if (folderEl) {
+            folderEl.addEventListener('change', async function() {
+                if (folderHandledByPicker) { folderHandledByPicker = false; return; }
+                if (this.files && this.files.length > 0) {
+                    // Extract folder name from webkitRelativePath
+                    const relPath = this.files[0].webkitRelativePath || '';
+                    const folderName = relPath.split('/')[0] || 'Dossier sélectionné';
+                    if (folderSelectBtn) {
+                        folderSelectBtn.textContent = '📂 ' + folderName;
+                        folderSelectBtn.style.color = '#333';
+                    }
+                }
+                await onFolderSelected({ target: { files: Array.from(this.files || []) } });
+            });
+        }
 
         // Info bubble toggle — folder
         const infoIcon = document.getElementById('folderInfoIcon');
