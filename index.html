@@ -2496,12 +2496,28 @@
             const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
             const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
+            function getAttendanceDisplayName(student) {
+                const first = String(student.first || '').trim();
+                const last = String(student.last || '').trim();
+                if (last && first) return `${last}, ${first}`;
+                if (last) return last;
+                if (first) return first;
+
+                const full = String(student.name || '').trim();
+                if (!full) return '';
+                const parts = full.split(/\s+/).filter(Boolean);
+                if (parts.length <= 1) return full;
+                const inferredLast = parts[parts.length - 1];
+                const inferredFirst = parts.slice(0, parts.length - 1).join(' ');
+                return `${inferredLast}, ${inferredFirst}`;
+            }
+
             // Trier : par numéro de table (croissant) si par local, alphabétique si par section
             const sorted = [...studentsGroup].sort((a, b) => {
                 if (groupBy === 'local') {
                     return parseInt(a.table, 10) - parseInt(b.table, 10);
                 }
-                return a.name.localeCompare(b.name, 'fr');
+                return getAttendanceDisplayName(a).localeCompare(getAttendanceDisplayName(b), 'fr', { sensitivity: 'base' });
             });
 
             // Configuration du tableau
@@ -2600,7 +2616,7 @@
 
                     // Données
                     const rowData = [
-                        student.name,
+                        getAttendanceDisplayName(student),
                         student.ni,
                         student.table,
                         student[fourthColLabel],
