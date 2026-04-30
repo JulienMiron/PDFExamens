@@ -8,23 +8,89 @@
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
+
+        :root {
+            --ulaval-red: #E30513;
+            --ulaval-red-dark: #B8040F;
+            --ulaval-gold: #FFD100;
+            --ulaval-gold-soft: #FFF3C4;
+            --bg-light: #F7F8FA;
+            --text-dark: #1A1A2E;
+            --text-muted: #5A5A72;
+            --card-bg: #FFFFFF;
+            --border-light: #E8E8EF;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+            --shadow-md: 0 4px 16px rgba(0,0,0,0.08);
+            --shadow-lg: 0 8px 30px rgba(0,0,0,0.12);
+            --radius: 12px;
+        }
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
 
+        @keyframes bgShift {
+            0%   { background-position: 0% 50%; }
+            50%  { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #052E2B, #0F766E, #A7F3D0);
+            background: linear-gradient(
+                135deg,
+                #2A0A0E 0%,
+                var(--ulaval-red-dark) 20%,
+                var(--ulaval-red) 38%,
+                #C8860A 52%,
+                var(--ulaval-gold) 65%,
+                #FFF3C4 80%,
+                var(--ulaval-gold) 90%,
+                var(--ulaval-red) 100%
+            );
+            background-size: 300% 300%;
+            animation: bgShift 12s ease infinite;
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Decorative blurred orbs */
+        body::before,
+        body::after {
+            content: '';
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.35;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        body::before {
+            width: 520px;
+            height: 520px;
+            background: radial-gradient(circle, var(--ulaval-gold) 0%, transparent 70%);
+            top: -120px;
+            right: -100px;
+        }
+
+        body::after {
+            width: 480px;
+            height: 480px;
+            background: radial-gradient(circle, var(--ulaval-red) 0%, transparent 70%);
+            bottom: -120px;
+            left: -80px;
         }
 
         .container {
+            position: relative;
+            z-index: 1;
             background: white;
             border-radius: 20px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
